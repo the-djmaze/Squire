@@ -1319,7 +1319,7 @@ var increaseBlockQuoteLevel = function ( frag ) {
 var decreaseBlockQuoteLevel = function ( frag ) {
     var blockquotes = frag.querySelectorAll( 'blockquote' );
     Array.prototype.filter.call( blockquotes, function ( el ) {
-        return !getNearest( el.parentNode, frag, 'BLOCKQUOTE' );
+        return !getClosest( el.parentNode, frag, 'BLOCKQUOTE' );
     }).forEach( function ( el ) {
         replaceWith( el, empty( el ) );
     });
@@ -1788,7 +1788,7 @@ proto.linkRegExp = /\b(?:((?:(?:ht|f)tps?:\/\/|www\d{0,3}[.]|[a-z0-9][a-z0-9.\-]
 var addLinks = function ( frag, root, self ) {
     var doc = frag.ownerDocument;
     var walker = new TreeWalker( frag, SHOW_TEXT, function ( node ) {
-        return !getNearest( node, root, 'A' );
+        return !getClosest( node, root, 'A' );
     });
     var linkRegExp = self.linkRegExp;
     var defaultAttributes = self._config.tagAttributes.a;
@@ -1925,7 +1925,7 @@ var escapeHTML = function ( text ) {
 proto.insertPlainText = function ( plainText, isPaste ) {
     var range = this.getSelection();
     if ( range.collapsed &&
-            getNearest( range.startContainer, this._root, 'PRE' ) ) {
+            getClosest( range.startContainer, this._root, 'PRE' ) ) {
         var node = range.startContainer;
         var offset = range.startOffset;
         var text, event;
@@ -2244,7 +2244,7 @@ proto.code = function () {
 proto.removeCode = function () {
     var range = this.getSelection();
     var ancestor = range.commonAncestorContainer;
-    var inPre = getNearest( ancestor, this._root, 'PRE' );
+    var inPre = getClosest( ancestor, this._root, 'PRE' );
     if ( inPre ) {
         this.modifyBlocks( removePre, range );
     } else {

@@ -23,19 +23,12 @@ import {
 
 // ---
 
-function createRange(startContainer: Node, startOffset: number): Range;
-function createRange(
-    startContainer: Node,
-    startOffset: number,
-    endContainer: Node,
-    endOffset: number,
-): Range;
-function createRange(
+const createRange = (
     startContainer: Node,
     startOffset: number,
     endContainer?: Node,
     endOffset?: number,
-): Range {
+): Range => {
     const range = document.createRange();
     range.setStart(startContainer, startOffset);
     if (endContainer && typeof endOffset === 'number') {
@@ -44,7 +37,7 @@ function createRange(
         range.setEnd(startContainer, startOffset);
     }
     return range;
-}
+};
 
 const insertNodeInRange = (range: Range, node: Node): void => {
     // Insert at start.

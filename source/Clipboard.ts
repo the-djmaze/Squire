@@ -1,4 +1,4 @@
-import { isWin, isGecko, isLegacyEdge, notWS } from './Constants';
+import { isWin, isGecko, notWS } from './Constants';
 import { createElement, detach } from './node/Node';
 import { getStartBlockOfRange, getEndBlockOfRange } from './range/Block';
 import { createRange, deleteContentsOfRange } from './range/InsertDelete';
@@ -25,7 +25,7 @@ const extractRangeToClipboard = (
 ): boolean => {
     // Edge only seems to support setting plain text as of 2016-03-11.
     const clipboardData = event.clipboardData;
-    if (isLegacyEdge || !clipboardData) {
+    if (!clipboardData) {
         return false;
     }
     // First get the plain text version from the range (unless we have a custom
@@ -221,31 +221,29 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
         // indication there should be an HTML part. However, it does support
         // access to image data, so we check for that first. Otherwise though,
         // fall through to fallback clipboard handling methods
-        if (!isLegacyEdge) {
-            event.preventDefault();
-            if (htmlItem && (!choosePlain || !plainItem)) {
-                htmlItem.getAsString((html) => {
-                    this.insertHTML(html, true);
-                });
-            } else if (plainItem) {
-                plainItem.getAsString((text) => {
-                    // If we have a selection and text is solely a URL,
-                    // just make the text a link.
-                    let isLink = false;
-                    const range = this.getSelection();
-                    if (!range.collapsed && notWS.test(range.toString())) {
-                        const match = this.linkRegExp.exec(text);
-                        isLink = !!match && match[0].length === text.length;
-                    }
-                    if (isLink) {
-                        this.makeLink(text);
-                    } else {
-                        this.insertPlainText(text, true);
-                    }
-                });
-            }
-            return;
+        event.preventDefault();
+        if (htmlItem && (!choosePlain || !plainItem)) {
+            htmlItem.getAsString((html) => {
+                this.insertHTML(html, true);
+            });
+        } else if (plainItem) {
+            plainItem.getAsString((text) => {
+                // If we have a selection and text is solely a URL,
+                // just make the text a link.
+                let isLink = false;
+                const range = this.getSelection();
+                if (!range.collapsed && notWS.test(range.toString())) {
+                    const match = this.linkRegExp.exec(text);
+                    isLink = !!match && match[0].length === text.length;
+                }
+                if (isLink) {
+                    this.makeLink(text);
+                } else {
+                    this.insertPlainText(text, true);
+                }
+            });
         }
+        return;
     }
 
     // Old interface
@@ -262,7 +260,6 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
     // https://bugzilla.mozilla.org/show_bug.cgi?id=1254028
     const types = clipboardData?.types;
     if (
-        !isLegacyEdge &&
         types &&
         (indexOf.call(types, 'text/html') > -1 ||
             (!isGecko &&

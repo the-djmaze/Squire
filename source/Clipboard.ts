@@ -66,8 +66,8 @@ const extractRangeToClipboard = (
         parent = parent.parentNode!;
     }
     while (parent && parent !== copyRoot) {
-        const newContents = parent.cloneNode(false);
-        newContents.appendChild(contents);
+        const newContents = parent.cloneNode(false) as Element;
+        newContents.append(contents);
         contents = newContents;
         parent = parent.parentNode!;
     }
@@ -84,7 +84,7 @@ const extractRangeToClipboard = (
         plainTextOnly = true;
     } else {
         const node = createElement('DIV') as HTMLDivElement;
-        node.appendChild(contents);
+        node.append(contents);
         html = node.innerHTML;
         if (toCleanHTML) {
             html = toCleanHTML(html);
@@ -300,7 +300,7 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
         contenteditable: 'true',
         style: 'position:fixed; overflow:hidden; top:0; right:100%; width:1px; height:1px;',
     });
-    body.appendChild(pasteArea);
+    body.append(pasteArea);
     range.selectNodeContents(pasteArea);
     this.setSelection(range);
 

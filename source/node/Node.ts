@@ -20,9 +20,7 @@ const createElement = (
             }
         }
     }
-    if (children) {
-        children.forEach((node) => el.appendChild(node));
-    }
+    children && el.append(...children);
     return el;
 };
 
@@ -123,12 +121,9 @@ const getLength = (node: Node): number => {
 // --- Manipulation
 
 const empty = (node: Node): DocumentFragment => {
-    const frag = document.createDocumentFragment();
-    let child = node.firstChild;
-    while (child) {
-        frag.appendChild(child);
-        child = node.firstChild;
-    }
+    const frag = document.createDocumentFragment(),
+        childNodes = node.childNodes;
+    childNodes && frag.append(...childNodes);
     return frag;
 };
 

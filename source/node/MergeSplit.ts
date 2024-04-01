@@ -70,7 +70,7 @@ const fixContainer = (
             if (!wrapper) {
                 wrapper = createElement('DIV');
             }
-            wrapper.appendChild(child);
+            wrapper.append(child);
         } else if (isBR || wrapper) {
             if (!wrapper) {
                 wrapper = createElement('DIV');
@@ -126,7 +126,7 @@ const split = (
     // Add right-hand siblings to the clone
     while (nodeAfterSplit) {
         const next = nodeAfterSplit.nextSibling;
-        clone.appendChild(nodeAfterSplit);
+        clone.append(nodeAfterSplit);
         nodeAfterSplit = next;
     }
 
@@ -201,7 +201,7 @@ const _mergeInlines = (
         } else if (child instanceof Element) {
             let frag: DocumentFragment | undefined;
             while ((frag = frags.pop())) {
-                child.appendChild(frag);
+                child.append(frag);
             }
             _mergeInlines(child, fakeRange);
         }
@@ -272,7 +272,7 @@ const mergeContainers = (node: Node, root: Element): void => {
         if (!isContainer(prev)) {
             if (isListItem) {
                 const block = createElement('DIV');
-                block.appendChild(empty(prev));
+                block.append(empty(prev));
                 prev.appendChild(block);
             } else {
                 return;

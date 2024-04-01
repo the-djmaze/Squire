@@ -86,7 +86,7 @@ const replaceStyles = (
                 newTreeTop = el;
             }
             if (newTreeBottom) {
-                newTreeBottom.appendChild(el);
+                newTreeBottom.append(el);
             }
             newTreeBottom = el;
             node.style.removeProperty(attr);
@@ -94,9 +94,9 @@ const replaceStyles = (
     }
 
     if (newTreeTop && newTreeBottom) {
-        newTreeBottom.appendChild(empty(node));
+        newTreeBottom.append(empty(node));
         if (node.style.cssText) {
-            node.appendChild(newTreeTop);
+            node.append(newTreeTop);
         } else {
             replaceWith(node, newTreeTop);
         }
@@ -114,7 +114,7 @@ const replaceWithTag = (tag: string) => {
             el.setAttribute(attribute.name, attribute.value);
         }
         parent.replaceChild(el, node);
-        el.appendChild(empty(node));
+        el.append(empty(node));
         return el;
     };
 };
@@ -167,7 +167,7 @@ const stylesRewriters: Record<string, StyleRewriter> = {
                 newTreeTop = sizeSpan;
             }
             if (newTreeBottom) {
-                newTreeBottom.appendChild(sizeSpan);
+                newTreeBottom.append(sizeSpan);
             }
             newTreeBottom = sizeSpan;
         }
@@ -183,7 +183,7 @@ const stylesRewriters: Record<string, StyleRewriter> = {
                 newTreeTop = colorSpan;
             }
             if (newTreeBottom) {
-                newTreeBottom.appendChild(colorSpan);
+                newTreeBottom.append(colorSpan);
             }
             newTreeBottom = colorSpan;
         }
@@ -191,7 +191,7 @@ const stylesRewriters: Record<string, StyleRewriter> = {
             newTreeTop = newTreeBottom = createElement('SPAN');
         }
         parent.replaceChild(newTreeTop, font);
-        newTreeBottom.appendChild(empty(font));
+        newTreeBottom.append(empty(font));
         return newTreeBottom;
     },
     TT: (node: Node, parent: Node, config: SquireConfig): HTMLElement => {
@@ -200,7 +200,7 @@ const stylesRewriters: Record<string, StyleRewriter> = {
             style: 'font-family:menlo,consolas,"courier new",monospace',
         });
         parent.replaceChild(el, node);
-        el.appendChild(empty(node));
+        el.append(empty(node));
         return el;
     },
 };

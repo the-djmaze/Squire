@@ -943,7 +943,7 @@ class Squire {
             if (child) {
                 node.replaceChild(block, child);
             } else {
-                node.appendChild(block);
+                node.append(block);
             }
         } else {
             while ((node = getNextBlock(node, root))) {
@@ -987,7 +987,7 @@ class Squire {
             if (child) {
                 node.replaceChild(block, child);
             } else {
-                node.appendChild(block);
+                node.append(block);
             }
         } else {
             while ((node = getNextBlock(node, root))) {
@@ -1002,7 +1002,7 @@ class Squire {
         while ((child = root.lastChild)) {
             root.removeChild(child);
         }
-        root.appendChild(frag);
+        root.append(frag);
 
         // Reset the undo stack
         this._undoIndex = -1;
@@ -1493,7 +1493,7 @@ class Squire {
                     }
                     const el = createElement(tag, attributes);
                     replaceWith(node, el);
-                    el.appendChild(node);
+                    el.append(node);
                 }
             } while (walker.nextNode());
 
@@ -1921,7 +1921,7 @@ class Squire {
             last.nodeName !== this._config.blockTag ||
             !isBlock(last)
         ) {
-            root.appendChild(this.createDefaultBlock());
+            root.append(this.createDefaultBlock());
         }
     }
 
@@ -2434,7 +2434,7 @@ class Squire {
                 } else {
                     replaceWith(node, createElement(type, listAttrs, [newLi]));
                 }
-                newLi.appendChild(empty(node));
+                newLi.append(empty(node));
                 walker.currentNode = newLi;
             } else {
                 node = node.parentNode;
@@ -2573,9 +2573,9 @@ class Squire {
                         replaceWith(nodes[l], empty(nodes[l]));
                     }
                     if (output.childNodes.length) {
-                        output.appendChild(document.createTextNode('\n'));
+                        output.append(document.createTextNode('\n'));
                     }
-                    output.appendChild(empty(node));
+                    output.append(empty(node));
                 }
                 // 4. Replace nbsp with regular sp
                 const textWalker = new TreeIterator<Text>(output, SHOW_TEXT);
@@ -2623,10 +2623,10 @@ class Squire {
                         const contents = document.createDocumentFragment();
                         let index: number;
                         while ((index = value.indexOf('\n')) > -1) {
-                            contents.appendChild(
+                            contents.append(
                                 document.createTextNode(value.slice(0, index)),
                             );
-                            contents.appendChild(createElement('BR'));
+                            contents.append(createElement('BR'));
                             value = value.slice(index + 1);
                         }
                         node.parentNode!.insertBefore(contents, node);
@@ -2671,11 +2671,11 @@ class Squire {
                     node.nodeName === 'BR' ||
                     node.nodeName === 'IMG'
                 ) {
-                    clean.appendChild(node);
+                    clean.append(node);
                     continue;
                 }
             } else if (isBlock(node)) {
-                clean.appendChild(
+                clean.append(
                     this.createDefaultBlock([
                         this._removeFormatting(
                             node as Element,
@@ -2737,7 +2737,7 @@ class Squire {
         // else is obliterated.
         while (nodeInSplit !== nodeAfterSplit) {
             nextNode = nodeInSplit!.nextSibling;
-            formattedNodes.appendChild(nodeInSplit!);
+            formattedNodes.append(nodeInSplit!);
             nodeInSplit = nextNode;
         }
         this._removeFormatting(formattedNodes, cleanNodes);

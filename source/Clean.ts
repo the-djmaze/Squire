@@ -10,16 +10,14 @@ import type { SquireConfig } from './Editor';
 // ---
 
 type StyleRewriter = (
-    node: HTMLElement,
-    parent: Node,
-    config: SquireConfig,
+    node: HTMLElement
 ) => HTMLElement;
 
 // ---
 
 const styleToSemantic: Record<
     string,
-    { regexp: RegExp; replace: (x: any, y: string) => HTMLElement }
+    { regexp: RegExp; replace: (y: string) => HTMLElement }
 > = {
     'font-weight': {
         regexp: /^bold|^700/i,
@@ -35,21 +33,16 @@ const styleToSemantic: Record<
     },
     'font-family': {
         regexp: notWS,
-        replace(
-            classNames: { fontFamily: string },
-            family: string,
-        ): HTMLElement {
+        replace(family: string): HTMLElement {
             return createElement('SPAN', {
-                class: classNames.fontFamily,
                 style: 'font-family:' + family,
             });
         },
     },
     'font-size': {
         regexp: notWS,
-        replace(classNames: { fontSize: string }, size: string): HTMLElement {
+        replace(size: string): HTMLElement {
             return createElement('SPAN', {
-                class: classNames.fontSize,
                 style: 'font-size:' + size,
             });
         },
@@ -62,11 +55,7 @@ const styleToSemantic: Record<
     },
 };
 
-const replaceStyles = (
-    node: HTMLElement,
-    _: Node,
-    config: SquireConfig,
-): HTMLElement => {
+const replaceStyles = (node: HTMLElement): HTMLElement => {
     const style = node.style;
     let newTreeBottom: HTMLElement | undefined;
     let newTreeTop: HTMLElement | undefined;
@@ -75,7 +64,7 @@ const replaceStyles = (
         const converter = styleToSemantic[attr];
         const css = style.getPropertyValue(attr);
         if (css && converter.regexp.test(css)) {
-            const el = converter.replace(config.classNames, css);
+            const el = converter.replace(css);
             if (
                 el.nodeName === node.nodeName &&
                 el.className === node.className
@@ -106,14 +95,14 @@ const replaceStyles = (
 };
 
 const replaceWithTag = (tag: string) => {
-    return (node: HTMLElement, parent: Node) => {
+    return (node: HTMLElement) => {
         const el = createElement(tag);
         const attributes = node.attributes;
         for (let i = 0, l = attributes.length; i < l; i += 1) {
             const attribute = attributes[i];
             el.setAttribute(attribute.name, attribute.value);
         }
-        parent.replaceChild(el, node);
+        replaceWith(node, el);
         el.append(empty(node));
         return el;
     };
@@ -135,16 +124,11 @@ const stylesRewriters: Record<string, StyleRewriter> = {
     INS: replaceWithTag('U'),
     STRIKE: replaceWithTag('S'),
     SPAN: replaceStyles,
-    FONT: (
-        node: HTMLElement,
-        parent: Node,
-        config: SquireConfig,
-    ): HTMLElement => {
+    FONT: (node: HTMLElement): HTMLElement => {
         const font = node as HTMLFontElement;
         const face = font.face;
         const size = font.size;
         let color = font.color;
-        const classNames = config.classNames;
         let fontSpan: HTMLElement;
         let sizeSpan: HTMLElement;
         let colorSpan: HTMLElement;
@@ -152,7 +136,6 @@ const stylesRewriters: Record<string, StyleRewriter> = {
         let newTreeTop: HTMLElement | undefined;
         if (face) {
             fontSpan = createElement('SPAN', {
-                class: classNames.fontFamily,
                 style: 'font-family:' + face,
             });
             newTreeTop = fontSpan;
@@ -160,7 +143,6 @@ const stylesRewriters: Record<string, StyleRewriter> = {
         }
         if (size) {
             sizeSpan = createElement('SPAN', {
-                class: classNames.fontSize,
                 style: 'font-size:' + fontSizes[size] + 'px',
             });
             if (!newTreeTop) {
@@ -176,7 +158,6 @@ const stylesRewriters: Record<string, StyleRewriter> = {
                 color = '#' + color;
             }
             colorSpan = createElement('SPAN', {
-                class: classNames.color,
                 style: 'color:' + color,
             });
             if (!newTreeTop) {
@@ -190,16 +171,15 @@ const stylesRewriters: Record<string, StyleRewriter> = {
         if (!newTreeTop || !newTreeBottom) {
             newTreeTop = newTreeBottom = createElement('SPAN');
         }
-        parent.replaceChild(newTreeTop, font);
+        replaceWith(font, newTreeTop);
         newTreeBottom.append(empty(font));
         return newTreeBottom;
     },
-    TT: (node: Node, parent: Node, config: SquireConfig): HTMLElement => {
+    TT: (node: Node): HTMLElement => {
         const el = createElement('SPAN', {
-            class: config.classNames.fontFamily,
             style: 'font-family:menlo,consolas,"courier new",monospace',
         });
-        parent.replaceChild(el, node);
+        replaceWith(node, el);
         el.append(empty(node));
         return el;
     },
@@ -240,7 +220,7 @@ const cleanTree = (
         if (child instanceof HTMLElement) {
             const childLength = child.childNodes.length;
             if (rewriter) {
-                child = rewriter(child, node, config);
+                child = rewriter(child);
             } else if (blacklist.test(nodeName)) {
                 node.removeChild(child);
                 i -= 1;
@@ -249,7 +229,7 @@ const cleanTree = (
             } else if (!allowedBlock.test(nodeName) && !isInline(child)) {
                 i -= 1;
                 l += childLength - 1;
-                node.replaceChild(empty(child), child);
+                replaceWith(child, empty(child));
                 continue;
             }
             if (childLength) {

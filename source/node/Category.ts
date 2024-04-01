@@ -22,9 +22,7 @@ const resetNodeCategoryCache = (): void => {
 
 // ---
 
-const isLeaf = (node: Node): boolean => {
-    return leafNodeNames.has(node.nodeName);
-};
+const isLeaf = (node: Node): boolean => leafNodeNames.has(node.nodeName);
 
 const getNodeCategory = (node: Node): number => {
     switch (node.nodeType) {
@@ -40,31 +38,21 @@ const getNodeCategory = (node: Node): number => {
             return UNKNOWN;
     }
 
-    let nodeCategory: number;
-    if (!Array.from(node.childNodes).every(isInline)) {
+    let nodeCategory: number =
+        Array.prototype.every.call(node.childNodes, isInline)
+        ? (inlineNodeNames.test(node.nodeName) ? INLINE : BLOCK)
         // Malformed HTML can have block tags inside inline tags. Need to treat
         // these as containers rather than inline. See #239.
-        nodeCategory = CONTAINER;
-    } else if (inlineNodeNames.test(node.nodeName)) {
-        nodeCategory = INLINE;
-    } else {
-        nodeCategory = BLOCK;
-    }
+        : CONTAINER;
     cache.set(node, nodeCategory);
     return nodeCategory;
 };
 
-const isInline = (node: Node): boolean => {
-    return getNodeCategory(node) === INLINE;
-};
+const isInline = (node: Node): boolean => getNodeCategory(node) === INLINE;
 
-const isBlock = (node: Node): boolean => {
-    return getNodeCategory(node) === BLOCK;
-};
+const isBlock = (node: Node): boolean => getNodeCategory(node) === BLOCK;
 
-const isContainer = (node: Node): boolean => {
-    return getNodeCategory(node) === CONTAINER;
-};
+const isContainer = (node: Node): boolean => getNodeCategory(node) === CONTAINER;
 
 // ---
 

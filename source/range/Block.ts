@@ -1,7 +1,7 @@
 import { isInline, isBlock } from '../node/Category';
 import { getPreviousBlock, getNextBlock } from '../node/Block';
 import { getNodeBeforeOffset, getNodeAfterOffset } from '../node/Node';
-import { ZWS, notWS } from '../Constants';
+import { ZWS, notWS, indexOf } from '../Constants';
 import { isNodeContainedInRange } from './Boundaries';
 import { TreeIterator, SHOW_ELEMENT_OR_TEXT } from '../node/TreeIterator';
 
@@ -159,9 +159,9 @@ const expandRangeToBlockBoundaries = (range: Range, root: Element): void => {
 
     if (start && end) {
         parent = start.parentNode!;
-        range.setStart(parent, Array.from(parent.childNodes).indexOf(start));
+        range.setStart(parent, indexOf(parent.childNodes, start));
         parent = end.parentNode!;
-        range.setEnd(parent, Array.from(parent.childNodes).indexOf(end) + 1);
+        range.setEnd(parent, indexOf(parent.childNodes, end) + 1);
     }
 };
 

@@ -1,7 +1,7 @@
 import { isLeaf } from '../node/Category';
 import { getLength, getNearest } from '../node/Node';
 import { isLineBreak } from '../node/Whitespace';
-import { TEXT_NODE } from '../Constants';
+import { TEXT_NODE, indexOf } from '../Constants';
 
 // ---
 
@@ -128,9 +128,7 @@ const moveRangeBoundariesUpTree = (
         startContainer !== root
     ) {
         parent = startContainer.parentNode!;
-        startOffset = Array.from(parent.childNodes).indexOf(
-            startContainer as ChildNode,
-        );
+        startOffset = indexOf(parent.childNodes, startContainer);
         startContainer = parent;
     }
 
@@ -151,7 +149,7 @@ const moveRangeBoundariesUpTree = (
         }
         parent = endContainer.parentNode!;
         endOffset =
-            Array.from(parent.childNodes).indexOf(endContainer as ChildNode) +
+            indexOf(parent.childNodes, endContainer) +
             1;
         endContainer = parent;
     }

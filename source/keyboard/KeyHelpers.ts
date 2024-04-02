@@ -1,4 +1,4 @@
-import { ZWS } from '../Constants';
+import { ZWS, indexOf } from '../Constants';
 import { getPreviousBlock } from '../node/Block';
 import { isInline, isBlock } from '../node/Category';
 import { fixCursor } from '../node/MergeSplit';
@@ -37,7 +37,7 @@ const afterDelete = (self: Squire, range?: Range): void => {
             // Move focus to just before empty inline(s)
             range!.setStart(
                 parent,
-                Array.from(parent.childNodes as NodeListOf<Node>).indexOf(node),
+                indexOf(parent.childNodes, node),
             );
             range!.collapse(true);
             // Remove empty inline(s)

@@ -1,4 +1,4 @@
-import { isWin, isGecko, notWS } from './Constants';
+import { isWin, isGecko, notWS, indexOf } from './Constants';
 import { createElement, detach } from './node/Node';
 import { getStartBlockOfRange, getEndBlockOfRange } from './range/Block';
 import { createRange, deleteContentsOfRange } from './range/InsertDelete';
@@ -11,8 +11,6 @@ import type { Squire } from './Editor';
 import { getTextContentsOfRange } from './range/Contents';
 
 // ---
-
-const indexOf = Array.prototype.indexOf;
 
 const extractRangeToClipboard = (
     event: ClipboardEvent,
@@ -244,10 +242,10 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
     const types = clipboardData?.types;
     if (
         types &&
-        (indexOf.call(types, 'text/html') > -1 ||
+        (indexOf(types, 'text/html') > -1 ||
             (!isGecko &&
-                indexOf.call(types, 'text/plain') > -1 &&
-                indexOf.call(types, 'text/rtf') < 0))
+                indexOf(types, 'text/plain') > -1 &&
+                indexOf(types, 'text/rtf') < 0))
     ) {
         event.preventDefault();
         // Abiword on Linux copies a plain text and html version, but the HTML

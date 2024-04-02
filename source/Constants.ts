@@ -23,6 +23,8 @@ const cantFocusEmptyTextNodes = isWebKit;
 // Use [^ \t\r\n] instead of \S so that nbsp does not count as white-space
 const notWS = /[^ \t\r\n]/;
 
+const indexOf = (array: readonly string[] | NodeList, value: string | Node) => Array.prototype.indexOf.call(array, value);
+
 // ---
 
 export {
@@ -41,4 +43,5 @@ export {
     isWebKit,
     ctrlKey,
     cantFocusEmptyTextNodes,
+    indexOf,
 };

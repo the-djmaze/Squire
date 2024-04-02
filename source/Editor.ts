@@ -44,7 +44,7 @@ import {
 } from './node/MergeSplit';
 import { getBlockWalker, getNextBlock, isEmptyBlock } from './node/Block';
 import { cleanTree, cleanupBRs, escapeHTML, removeEmptyInlines } from './Clean';
-import { cantFocusEmptyTextNodes, ZWS } from './Constants';
+import { cantFocusEmptyTextNodes, ZWS, indexOf } from './Constants';
 import {
     expandRangeToBlockBoundaries,
     getEndBlockOfRange,
@@ -534,10 +534,8 @@ class Squire {
         if (start && end) {
             let startContainer: Node = start.parentNode!;
             let endContainer: Node = end.parentNode!;
-            const startOffset = Array.from(startContainer.childNodes).indexOf(
-                start,
-            );
-            let endOffset = Array.from(endContainer.childNodes).indexOf(end);
+            const startOffset = indexOf(startContainer.childNodes, start);
+            let endOffset = indexOf(endContainer.childNodes, end);
 
             if (startContainer === endContainer) {
                 endOffset -= 1;
@@ -2679,12 +2677,11 @@ class Squire {
         // Restore selection
         if (nodeInSplit) {
             stopNode.insertBefore(cleanNodes, nodeAfterSplit);
-            const childNodes = Array.from(stopNode.childNodes) as Node[];
-            startOffset = childNodes.indexOf(nodeInSplit);
-            endOffset = nextNode ? childNodes.indexOf(nextNode) + 1 : 0;
+            const childNodes = stopNode.childNodes;
+            startOffset = indexOf(childNodes, nodeInSplit);
+            endOffset = nextNode ? indexOf(childNodes, nextNode) + 1 : 0;
         } else if (nodeAfterSplit) {
-            const childNodes = Array.from(stopNode.childNodes) as Node[];
-            startOffset = childNodes.indexOf(nodeAfterSplit);
+            startOffset = indexOf(stopNode.childNodes, nodeAfterSplit);
             endOffset = startOffset;
         }
 

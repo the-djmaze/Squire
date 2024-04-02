@@ -1,4 +1,5 @@
 import { cleanupBRs } from '../Clean';
+import { indexOf } from '../Constants';
 import {
     split,
     fixCursor,
@@ -49,7 +50,7 @@ const insertNodeInRange = (range: Range, node: Node): void => {
         const parent = startContainer.parentNode!;
         children = parent.childNodes;
         if (startOffset === startContainer.length) {
-            startOffset = Array.from(children).indexOf(startContainer) + 1;
+            startOffset = indexOf(children, startContainer) + 1;
             if (range.collapsed) {
                 endContainer = parent;
                 endOffset = startOffset;
@@ -65,9 +66,7 @@ const insertNodeInRange = (range: Range, node: Node): void => {
                 }
                 startContainer = afterSplit;
             }
-            startOffset = Array.from(children).indexOf(
-                startContainer as ChildNode,
-            );
+            startOffset = indexOf(children, startContainer);
         }
         startContainer = parent;
     } else {
@@ -350,9 +349,7 @@ const insertTreeFragmentIntoRange = (
                 root,
             ) as Node;
             container = nodeAfterSplit.parentNode!;
-            offset = Array.from(container.childNodes).indexOf(
-                nodeAfterSplit as ChildNode,
-            );
+            offset = indexOf(container.childNodes, nodeAfterSplit);
         }
         if (/*isBlock( container ) && */ offset !== getLength(container)) {
             // Collect any inline contents of the block after the range point
@@ -365,10 +362,7 @@ const insertTreeFragmentIntoRange = (
         mergeWithBlock(container, firstBlockInFrag, range, root);
 
         // And where we will insert
-        offset =
-            Array.from(container.parentNode!.childNodes).indexOf(
-                container as ChildNode,
-            ) + 1;
+        offset = indexOf(container.parentNode!.childNodes, container) + 1;
         container = container.parentNode!;
         range.setEnd(container, offset);
     }

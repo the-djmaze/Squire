@@ -29,41 +29,25 @@ const createElement = (
 const areAlike = (
     node: HTMLElement | Node,
     node2: HTMLElement | Node,
-): boolean => {
-    if (isLeaf(node)) {
-        return false;
-    }
-    if (node.nodeType !== node2.nodeType || node.nodeName !== node2.nodeName) {
-        return false;
-    }
-    if (node instanceof HTMLElement && node2 instanceof HTMLElement) {
-        return (
-            node.nodeName !== 'A' &&
-            node.className === node2.className &&
-            node.style.cssText === node2.style.cssText
-        );
-    }
-    return true;
-};
+): boolean =>
+    !isLeaf(node) && (
+        node.nodeType === node2.nodeType &&
+        node.nodeName === node2.nodeName &&
+        (
+            !(node instanceof HTMLElement && node2 instanceof HTMLElement)
+            || (node.nodeName !== "A" &&
+                node.className === node2.className &&
+                node.style?.cssText === node2.style?.cssText
+            )
+        )
+    );
 
 const hasTagAttributes = (
     node: Node | Element,
     tag: string,
     attributes?: Record<string, string> | null,
-): boolean => {
-    if (node.nodeName !== tag) {
-        return false;
-    }
-    for (const attr in attributes) {
-        if (
-            !('getAttribute' in node) ||
-            node.getAttribute(attr) !== attributes[attr]
-        ) {
-            return false;
-        }
-    }
-    return true;
-};
+): boolean =>
+    node.nodeName === tag && Object.entries(attributes || {}).every(([k,v]) => (node as Element).getAttribute(k) === v);
 
 // --- Traversal
 
@@ -84,7 +68,7 @@ const getNearest = (
 
 const getNodeBeforeOffset = (node: Node, offset: number): Node => {
     let children = node.childNodes;
-    while (offset && node instanceof Element) {
+    while (offset && isElement(node)) {
         node = children[offset - 1];
         children = node.childNodes;
         offset = children.length;
@@ -94,7 +78,7 @@ const getNodeBeforeOffset = (node: Node, offset: number): Node => {
 
 const getNodeAfterOffset = (node: Node, offset: number): Node | null => {
     let returnNode: Node | null = node;
-    if (returnNode instanceof Element) {
+    if (isElement(returnNode)) {
         const children = returnNode.childNodes;
         if (offset < children.length) {
             returnNode = children[offset];
@@ -111,7 +95,7 @@ const getNodeAfterOffset = (node: Node, offset: number): Node | null => {
 };
 
 const getLength = (node: Node): number => {
-    return node instanceof Element || node instanceof DocumentFragment
+    return isElement(node) || node instanceof DocumentFragment
         ? node.childNodes.length
         : node instanceof CharacterData
         ? node.length
@@ -127,20 +111,11 @@ const empty = (node: Node): DocumentFragment => {
     return frag;
 };
 
-const detach = (node: Node): Node => {
-    const parent = node.parentNode;
-    if (parent) {
-        parent.removeChild(node);
-    }
-    return node;
-};
+// node.remove();
+const detach = (node: Node): Node | undefined => node.parentNode?.removeChild(node);
 
-const replaceWith = (node: Node, node2: Node): void => {
-    const parent = node.parentNode;
-    if (parent) {
-        parent.replaceChild(node2, node);
-    }
-};
+const replaceWith = (node: Node, node2: Node): Node | undefined =>
+    node.parentNode?.replaceChild(node2, node);
 
 // --- SnappyMail
 const getClosest = (node: any, root: Element, selector: string) => {

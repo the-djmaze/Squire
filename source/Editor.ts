@@ -1596,9 +1596,7 @@ class Squire {
 
         // Merge adjacent inlines:
         this._getRangeAndRemoveBookmark(range);
-        if (fixer) {
-            range.collapse(false);
-        }
+        fixer && range.collapse(false);
         mergeInlines(root, range);
 
         return range;
@@ -1606,53 +1604,17 @@ class Squire {
 
     // ---
 
-    bold(): Squire {
-        return this.changeFormat({ tag: 'B' });
-    }
+    bold() { this.toggleTag('B'); }
 
-    removeBold(): Squire {
-        return this.changeFormat(null, { tag: 'B' });
-    }
+    italic() { this.toggleTag('I'); }
 
-    italic(): Squire {
-        return this.changeFormat({ tag: 'I' });
-    }
+    underline() { this.toggleTag('U'); }
 
-    removeItalic(): Squire {
-        return this.changeFormat(null, { tag: 'I' });
-    }
+    strikethrough() { this.toggleTag('S'); }
 
-    underline(): Squire {
-        return this.changeFormat({ tag: 'U' });
-    }
+    subscript() { this.toggleTag('SUB', 'SUP'); }
 
-    removeUnderline(): Squire {
-        return this.changeFormat(null, { tag: 'U' });
-    }
-
-    strikethrough(): Squire {
-        return this.changeFormat({ tag: 'S' });
-    }
-
-    removeStrikethrough(): Squire {
-        return this.changeFormat(null, { tag: 'S' });
-    }
-
-    subscript(): Squire {
-        return this.changeFormat({ tag: 'SUB' }, { tag: 'SUP' });
-    }
-
-    removeSubscript(): Squire {
-        return this.changeFormat(null, { tag: 'SUB' });
-    }
-
-    superscript(): Squire {
-        return this.changeFormat({ tag: 'SUP' }, { tag: 'SUB' });
-    }
-
-    removeSuperscript(): Squire {
-        return this.changeFormat(null, { tag: 'SUP' });
-    }
+    superscript() { this.toggleTag('SUP', 'SUB'); }
 
     // ---
 
@@ -2748,6 +2710,14 @@ class Squire {
         this.setAttribute("style", style);
     }
 
+    toggleTag(name: string, remove?: string) {
+        let range = this.getSelection();
+        if (this.hasFormat(name, null, range)) {
+            this.changeFormat(null, { tag: name }, range);
+        } else {
+            this.changeFormat({ tag: name }, remove ? { tag: remove } : null, range);
+        }
+    }
 }
 
 // ---

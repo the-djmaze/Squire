@@ -13,6 +13,7 @@ import {
     getClosest,
     isElement,
     isTextNode,
+    isBrElement,
 } from './node/Node';
 import {
     isLeaf,
@@ -914,7 +915,7 @@ class Squire {
 
         let node: Element | null = root;
         const child = node.firstChild;
-        if (!child || child.nodeName === 'BR') {
+        if (!child || isBrElement(child)) {
             const block = this.createDefaultBlock();
             if (child) {
                 node.replaceChild(block, child);
@@ -958,7 +959,7 @@ class Squire {
         // Fix cursor
         let node: DocumentFragment | HTMLElement | null = frag;
         let child = node.firstChild;
-        if (!child || child.nodeName === 'BR') {
+        if (!child || isBrElement(child)) {
             const block = this.createDefaultBlock();
             if (child) {
                 node.replaceChild(block, child);
@@ -1410,7 +1411,7 @@ class Squire {
                 (node: Node) => {
                     return (
                         (isTextNode(node) ||
-                            node.nodeName === 'BR' ||
+                            isBrElement(node) ||
                             node.nodeName === 'IMG') &&
                         isNodeContainedInRange(range, node, true)
                     );
@@ -1860,9 +1861,7 @@ class Squire {
     };
 
     splitBlock(lineBreakOnly: boolean, range?: Range): Squire {
-        if (!range) {
-            range = this.getSelection();
-        }
+        range = range || this.getSelection();
         const root = this._root;
         let block: Node | Element | null;
         let parent: Node | null;
@@ -2037,7 +2036,7 @@ class Squire {
 
             while (child instanceof Text && !child.data) {
                 next = child.nextSibling;
-                if (!next || next.nodeName === 'BR') {
+                if (!next || isBrElement(next)) {
                     break;
                 }
                 detach(child);
@@ -2047,7 +2046,7 @@ class Squire {
             // 'BR's essentially don't count; they're a browser hack.
             // If you try to select the contents of a 'BR', FF will not let
             // you type anything!
-            if (!child || child.nodeName === 'BR' || isTextNode(child)) {
+            if (!child || isBrElement(child) || isTextNode(child)) {
                 break;
             }
             nodeAfterSplit = child;
@@ -2217,36 +2216,34 @@ class Squire {
         if (listSelection) {
             // eslint-disable-next-line prefer-const
             let [list, startLi, endLi] = listSelection;
-            if (!startLi || startLi === list.firstChild) {
-                return this.focus();
-            }
+            if (startLi && startLi !== list.firstChild) {
+                // Save undo checkpoint and bookmark selection
+                this._recordUndoState(range, this._isInUndoState);
 
-            // Save undo checkpoint and bookmark selection
-            this._recordUndoState(range, this._isInUndoState);
+                // Increase list depth
+                const type = list.nodeName;
+                let newParent = startLi.previousSibling!;
+                let listAttrs: Record<string, string> | null;
+                let next: Node | null;
+                if (newParent.nodeName !== type) {
+                    listAttrs = this._config.tagAttributes[type.toLowerCase()];
+                    newParent = createElement(type, listAttrs);
+                    list.insertBefore(newParent, startLi);
+                }
+                do {
+                    next = startLi === endLi ? null : startLi.nextSibling;
+                    newParent.appendChild(startLi);
+                } while ((startLi = next));
+                next = newParent.nextSibling;
+                if (next) {
+                    mergeContainers(next, root);
+                }
 
-            // Increase list depth
-            const type = list.nodeName;
-            let newParent = startLi.previousSibling!;
-            let listAttrs: Record<string, string> | null;
-            let next: Node | null;
-            if (newParent.nodeName !== type) {
-                listAttrs = this._config.tagAttributes[type.toLowerCase()];
-                newParent = createElement(type, listAttrs);
-                list.insertBefore(newParent, startLi);
-            }
-            do {
-                next = startLi === endLi ? null : startLi.nextSibling;
-                newParent.appendChild(startLi);
-            } while ((startLi = next));
-            next = newParent.nextSibling;
-            if (next) {
-                mergeContainers(next, root);
-            }
-
-            // Restore selection
-            this._getRangeAndRemoveBookmark(range);
-            this.setSelection(range);
-            this._updatePath(range, true);
+                // Restore selection
+                this._getRangeAndRemoveBookmark(range);
+                this.setSelection(range);
+                this._updatePath(range, true);
+		    }
         }
         return this.focus();
     }
@@ -2259,12 +2256,8 @@ class Squire {
         if (listSelection) {
             // eslint-disable-next-line prefer-const
             let [list, startLi, endLi] = listSelection;
-            if (!startLi) {
-                startLi = list.firstChild;
-            }
-            if (!endLi) {
-                endLi = list.lastChild!;
-            }
+            startLi = startLi || list.firstChild;
+            endLi = endLi || list.lastChild!;
 
             // Save undo checkpoint and bookmark selection
             this._recordUndoState(range, this._isInUndoState);
@@ -2399,13 +2392,12 @@ class Squire {
 
     decreaseQuoteLevel(range?: Range): Squire {
         return this.modifyBlocks((frag) => {
-            Array.from(frag.querySelectorAll('blockquote'))
-                .filter((el: Node) =>
-                    !getNearest(el.parentNode, frag, 'BLOCKQUOTE')
-                )
-                .forEach((el: Node) =>
-                    replaceWith(el, empty(el))
-                );
+            Array.prototype.filter.call(
+                frag.querySelectorAll('blockquote'),
+                (el: Node) => !getNearest(el.parentNode, frag, 'BLOCKQUOTE')
+            ).forEach((el: Node) =>
+                replaceWith(el, empty(el))
+            );
             return frag;
         }, range).focus();
     }
@@ -2559,7 +2551,7 @@ class Squire {
             if (isInline(node)) {
                 if (
                     isTextNode(node) ||
-                    node.nodeName === 'BR' ||
+                    isBrElement(node) ||
                     node.nodeName === 'IMG'
                 ) {
                     clean.append(node);

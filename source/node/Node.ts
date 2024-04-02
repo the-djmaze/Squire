@@ -142,6 +142,17 @@ const replaceWith = (node: Node, node2: Node): void => {
     }
 };
 
+// --- SnappyMail
+const getClosest = (node: any, root: Element, selector: string) => {
+    node = (node && !node.closest) ? node.parentElement : node;
+    node = node?.closest(selector);
+    return (node && root.contains(node)) ? node : null;
+};
+const isElement = (node: Node) => node instanceof Element;
+const isTextNode = (node: Node) => node instanceof Text;
+//  isBrElement = (node: Node) => node instanceof HTMLBRElement;
+const isBrElement = (node: Node) => "BR" === node?.nodeName;
+
 // --- Export
 
 export {
@@ -155,4 +166,8 @@ export {
     getNodeBeforeOffset,
     hasTagAttributes,
     replaceWith,
+    getClosest,
+    isElement,
+    isTextNode,
+    isBrElement,
 };

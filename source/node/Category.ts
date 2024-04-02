@@ -1,11 +1,12 @@
 import { ELEMENT_NODE, TEXT_NODE, DOCUMENT_FRAGMENT_NODE } from '../Constants';
+import { isElement } from './Node';
 
 // ---
 
 const inlineNodeNames =
-    /^(?:#text|A(?:BBR|CRONYM)?|B(?:R|D[IO])?|C(?:ITE|ODE)|D(?:ATA|EL|FN)|EM|FONT|HR|I(?:FRAME|MG|NPUT|NS)?|KBD|Q|R(?:P|T|UBY)|S(?:AMP|MALL|PAN|TR(?:IKE|ONG)|U[BP])?|TIME|U|VAR|WBR)$/;
+    /^(?:#text|A|ABBR|ACRONYM|B|BR|BD[IO]|CITE|CODE|DATA|DEL|DFN|EM|FONT|HR|I|IMG|INPUT|INS|KBD|Q|RP|RT|RUBY|S|SAMP|SMALL|SPAN|STR(IKE|ONG)|SU[BP]|TIME|U|VAR|WBR)$/;
 
-const leafNodeNames = new Set(['BR', 'HR', 'IFRAME', 'IMG', 'INPUT']);
+const leafNodeNames = new Set(['BR', 'HR', 'IMG']);
 
 const UNKNOWN = 0;
 const INLINE = 1;
@@ -22,7 +23,7 @@ const resetNodeCategoryCache = (): void => {
 
 // ---
 
-const isLeaf = (node: Node): boolean => leafNodeNames.has(node.nodeName);
+const isLeaf = (node: Node): boolean => isElement(node) && leafNodeNames.has(node.nodeName);
 
 const getNodeCategory = (node: Node): number => {
     switch (node.nodeType) {

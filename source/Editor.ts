@@ -10,6 +10,9 @@ import {
     getNearest,
     hasTagAttributes,
     replaceWith,
+    getClosest,
+    isElement,
+    isTextNode,
 } from './node/Node';
 import {
     isLeaf,
@@ -59,6 +62,20 @@ import {
 import { keyHandlers, _onKey } from './keyboard/KeyHandlers';
 import { linkifyText } from './keyboard/KeyHelpers';
 import { getTextContentsOfRange } from './range/Contents';
+
+// SnappyMail
+const
+    setAttributes = (node: HTMLElement, props: Object) => {
+        props && Object.entries(props).forEach(([k,v]) => {
+            if (null == v) {
+                node.removeAttribute(k);
+            } else if ("style" === k && typeof v === "object") {
+                Object.entries(v).forEach(([k,v]) => (node.style as any)[k] = v);
+            } else {
+                node.setAttribute(k, v);
+            }
+        });
+    };
 
 declare const DOMPurify: any;
 
@@ -545,13 +562,13 @@ class Squire {
             // text node to current selection point
             if (range.collapsed) {
                 startContainer = range.startContainer;
-                if (startContainer instanceof Text) {
+                if (isTextNode(startContainer)) {
                     endContainer = startContainer.childNodes[range.startOffset];
-                    if (!endContainer || !(endContainer instanceof Text)) {
+                    if (!endContainer || !isTextNode(endContainer)) {
                         endContainer =
                             startContainer.childNodes[range.startOffset - 1];
                     }
-                    if (endContainer && endContainer instanceof Text) {
+                    if (isTextNode(endContainer)) {
                         range.setStart(endContainer, 0);
                         range.collapse(true);
                     }
@@ -1210,7 +1227,7 @@ class Squire {
 
         let seenAttributes = 0;
         let element: Node | null = range.commonAncestorContainer;
-        if (range.collapsed || element instanceof Text) {
+        if (range.collapsed || isTextNode(element)) {
             if (element instanceof Text) {
                 element = element.parentNode!;
             }
@@ -1274,7 +1291,7 @@ class Squire {
         }
         if (
             !range.collapsed &&
-            range.endContainer instanceof Text &&
+            isTextNode(range.endContainer) &&
             range.endOffset === 0 &&
             range.endContainer.previousSibling
         ) {
@@ -1291,7 +1308,7 @@ class Squire {
 
         // If common ancestor is a text node and doesn't have the format, we
         // definitely don't have it.
-        if (common instanceof Text) {
+        if (isTextNode(common)) {
             return false;
         }
 
@@ -1394,7 +1411,7 @@ class Squire {
                 SHOW_ELEMENT_OR_TEXT,
                 (node: Node) => {
                     return (
-                        (node instanceof Text ||
+                        (isTextNode(node) ||
                             node.nodeName === 'BR' ||
                             node.nodeName === 'IMG') &&
                         isNodeContainedInRange(range, node, true)
@@ -1921,7 +1938,7 @@ class Squire {
             moveRangeBoundariesDownTree(range);
             node = range.startContainer;
             const offset = range.startOffset;
-            if (!(node instanceof Text)) {
+            if (!isTextNode(node)) {
                 node = document.createTextNode('');
                 parent.insertBefore(node, parent.firstChild);
             }
@@ -2041,7 +2058,7 @@ class Squire {
         // Focus cursor
         // If there's a <b>/<i> etc. at the beginning of the split
         // make sure we focus inside it.
-        while (nodeAfterSplit instanceof Element) {
+        while (isElement(nodeAfterSplit)) {
             let child = nodeAfterSplit.firstChild;
             let next;
 
@@ -2058,7 +2075,7 @@ class Squire {
                 break;
             }
 
-            while (child && child instanceof Text && !child.data) {
+            while (child instanceof Text && !child.data) {
                 next = child.nextSibling;
                 if (!next || next.nodeName === 'BR') {
                     break;
@@ -2070,7 +2087,7 @@ class Squire {
             // 'BR's essentially don't count; they're a browser hack.
             // If you try to select the contents of a 'BR', FF will not let
             // you type anything!
-            if (!child || child.nodeName === 'BR' || child instanceof Text) {
+            if (!child || child.nodeName === 'BR' || isTextNode(child)) {
                 break;
             }
             nodeAfterSplit = child;
@@ -2232,120 +2249,107 @@ class Squire {
     }
 
     increaseListLevel(range?: Range) {
-        if (!range) {
-            range = this.getSelection();
-        }
+        range = range || this.getSelection();
 
         // Get start+end li in single common ancestor
         const root = this._root;
         const listSelection = this._getListSelection(range, root);
-        if (!listSelection) {
-            return this.focus();
-        }
-        // eslint-disable-next-line prefer-const
-        let [list, startLi, endLi] = listSelection;
-        if (!startLi || startLi === list.firstChild) {
-            return this.focus();
-        }
+        if (listSelection) {
+            // eslint-disable-next-line prefer-const
+            let [list, startLi, endLi] = listSelection;
+            if (!startLi || startLi === list.firstChild) {
+                return this.focus();
+            }
 
-        // Save undo checkpoint and bookmark selection
-        this._recordUndoState(range, this._isInUndoState);
+            // Save undo checkpoint and bookmark selection
+            this._recordUndoState(range, this._isInUndoState);
 
-        // Increase list depth
-        const type = list.nodeName;
-        let newParent = startLi.previousSibling!;
-        let listAttrs: Record<string, string> | null;
-        let next: Node | null;
-        if (newParent.nodeName !== type) {
-            listAttrs = this._config.tagAttributes[type.toLowerCase()];
-            newParent = createElement(type, listAttrs);
-            list.insertBefore(newParent, startLi);
+            // Increase list depth
+            const type = list.nodeName;
+            let newParent = startLi.previousSibling!;
+            let listAttrs: Record<string, string> | null;
+            let next: Node | null;
+            if (newParent.nodeName !== type) {
+                listAttrs = this._config.tagAttributes[type.toLowerCase()];
+                newParent = createElement(type, listAttrs);
+                list.insertBefore(newParent, startLi);
+            }
+            do {
+                next = startLi === endLi ? null : startLi.nextSibling;
+                newParent.appendChild(startLi);
+            } while ((startLi = next));
+            next = newParent.nextSibling;
+            if (next) {
+                mergeContainers(next, root);
+            }
+
+            // Restore selection
+            this._getRangeAndRemoveBookmark(range);
+            this.setSelection(range);
+            this._updatePath(range, true);
         }
-        do {
-            next = startLi === endLi ? null : startLi.nextSibling;
-            newParent.appendChild(startLi);
-        } while ((startLi = next));
-        next = newParent.nextSibling;
-        if (next) {
-            mergeContainers(next, root);
-        }
-
-        // Restore selection
-        this._getRangeAndRemoveBookmark(range);
-        this.setSelection(range);
-        this._updatePath(range, true);
-
         return this.focus();
     }
 
     decreaseListLevel(range?: Range) {
-        if (!range) {
-            range = this.getSelection();
-        }
+        range = range || this.getSelection();
 
         const root = this._root;
         const listSelection = this._getListSelection(range, root);
-        if (!listSelection) {
-            return this.focus();
-        }
-
-        // eslint-disable-next-line prefer-const
-        let [list, startLi, endLi] = listSelection;
-        if (!startLi) {
-            startLi = list.firstChild;
-        }
-        if (!endLi) {
-            endLi = list.lastChild!;
-        }
-
-        // Save undo checkpoint and bookmark selection
-        this._recordUndoState(range, this._isInUndoState);
-
-        let next: Node | null;
-        let insertBefore: Node | null = null;
-        if (startLi) {
-            // Find the new parent list node
-            let newParent = list.parentNode!;
-
-            // Split list if necessary
-            insertBefore = !endLi.nextSibling
-                ? list.nextSibling
-                : (split(list, endLi.nextSibling, newParent, root) as Node);
-
-            if (newParent !== root && newParent.nodeName === 'LI') {
-                newParent = newParent.parentNode!;
-                while (insertBefore) {
-                    next = insertBefore.nextSibling;
-                    endLi.appendChild(insertBefore);
-                    insertBefore = next;
-                }
-                insertBefore = list.parentNode!.nextSibling;
+        if (listSelection) {
+            // eslint-disable-next-line prefer-const
+            let [list, startLi, endLi] = listSelection;
+            if (!startLi) {
+                startLi = list.firstChild;
+            }
+            if (!endLi) {
+                endLi = list.lastChild!;
             }
 
-            const makeNotList = !/^[OU]L$/.test(newParent.nodeName);
-            do {
-                next = startLi === endLi ? null : startLi.nextSibling;
-                list.removeChild(startLi);
-                if (makeNotList && startLi.nodeName === 'LI') {
-                    startLi = this.createDefaultBlock([empty(startLi)]);
+            // Save undo checkpoint and bookmark selection
+            this._recordUndoState(range, this._isInUndoState);
+
+            let next: Node | null;
+            let insertBefore: Node | null = null;
+            if (startLi) {
+                // Find the new parent list node
+                let newParent = list.parentNode!;
+
+                // Split list if necessary
+                insertBefore = !endLi.nextSibling
+                    ? list.nextSibling
+                    : (split(list, endLi.nextSibling, newParent, root) as Node);
+
+                if (newParent !== root && newParent.nodeName === 'LI') {
+                    newParent = newParent.parentNode!;
+                    while (insertBefore) {
+                        next = insertBefore.nextSibling;
+                        endLi.appendChild(insertBefore);
+                        insertBefore = next;
+                    }
+                    insertBefore = list.parentNode!.nextSibling;
                 }
-                newParent.insertBefore(startLi!, insertBefore);
-            } while ((startLi = next));
+
+                const makeNotList = !/^[OU]L$/.test(newParent.nodeName);
+                do {
+                    next = startLi === endLi ? null : startLi.nextSibling;
+                    list.removeChild(startLi);
+                    if (makeNotList && startLi.nodeName === 'LI') {
+                        startLi = this.createDefaultBlock([empty(startLi)]);
+                    }
+                    newParent.insertBefore(startLi!, insertBefore);
+                } while ((startLi = next));
+            }
+
+            list.firstChild || detach(list);
+
+            insertBefore && mergeContainers(insertBefore, root);
+
+            // Restore selection
+            this._getRangeAndRemoveBookmark(range);
+            this.setSelection(range);
+            this._updatePath(range, true);
         }
-
-        if (!list.firstChild) {
-            detach(list);
-        }
-
-        if (insertBefore) {
-            mergeContainers(insertBefore, root);
-        }
-
-        // Restore selection
-        this._getRangeAndRemoveBookmark(range);
-        this.setSelection(range);
-        this._updatePath(range, true);
-
         return this.focus();
     }
 
@@ -2392,45 +2396,37 @@ class Squire {
     }
 
     makeUnorderedList(): Squire {
-        this.modifyBlocks((frag) => this._makeList(frag, 'UL'));
-        return this.focus();
+        return this.modifyBlocks((frag) => this._makeList(frag, 'UL')).focus();
     }
 
     makeOrderedList(): Squire {
-        this.modifyBlocks((frag) => this._makeList(frag, 'OL'));
-        return this.focus();
+        return this.modifyBlocks((frag) => this._makeList(frag, 'OL')).focus();
     }
 
     removeList(): Squire {
-        this.modifyBlocks((frag) => {
-            const lists = frag.querySelectorAll('UL, OL');
-            const items = frag.querySelectorAll('LI');
+        return this.modifyBlocks((frag) => {
             const root = this._root;
-            for (let i = 0, l = lists.length; i < l; i += 1) {
-                const list = lists[i];
-                const listFrag = empty(list);
-                fixContainer(listFrag, root);
-                replaceWith(list, listFrag);
-            }
-
-            for (let i = 0, l = items.length; i < l; i += 1) {
-                const item = items[i];
+            frag.querySelectorAll("LI").forEach(item => {
                 if (isBlock(item)) {
                     replaceWith(item, this.createDefaultBlock([empty(item)]));
                 } else {
                     fixContainer(item, root);
                     replaceWith(item, empty(item));
                 }
-            }
+            });
+            frag.querySelectorAll('UL, OL').forEach(list => {
+                const listFrag = empty(list);
+                fixContainer(listFrag, root);
+                replaceWith(list, listFrag);
+            });
             return frag;
-        });
-        return this.focus();
+        }).focus();
     }
 
     // ---
 
     increaseQuoteLevel(range?: Range): Squire {
-        this.modifyBlocks(
+        return this.modifyBlocks(
             (frag) =>
                 createElement(
                     'BLOCKQUOTE',
@@ -2438,26 +2434,24 @@ class Squire {
                     [frag],
                 ),
             range,
-        );
-        return this.focus();
+        ).focus();
     }
 
     decreaseQuoteLevel(range?: Range): Squire {
-        this.modifyBlocks((frag) => {
+        return this.modifyBlocks((frag) => {
             Array.from(frag.querySelectorAll('blockquote'))
-                .filter((el: Node) => {
-                    return !getNearest(el.parentNode, frag, 'BLOCKQUOTE');
-                })
-                .forEach((el: Node) => {
-                    replaceWith(el, empty(el));
-                });
+                .filter((el: Node) =>
+                    !getNearest(el.parentNode, frag, 'BLOCKQUOTE')
+                )
+                .forEach((el: Node) =>
+                    replaceWith(el, empty(el))
+                );
             return frag;
-        }, range);
-        return this.focus();
+        }, range).focus();
     }
 
     removeQuote(range?: Range): Squire {
-        this.modifyBlocks(
+        return this.modifyBlocks(
             (/* frag */) =>
                 this.createDefaultBlock([
                     createElement('INPUT', {
@@ -2470,8 +2464,7 @@ class Squire {
                     }),
                 ]),
             range,
-        );
-        return this.focus();
+        ).focus();
     }
 
     // ---
@@ -2586,12 +2579,9 @@ class Squire {
     }
 
     toggleCode(): Squire {
-        if (this.hasFormat('PRE') || this.hasFormat('CODE')) {
-            this.removeCode();
-        } else {
-            this.code();
-        }
-        return this;
+        return (this.hasFormat("PRE") || this.hasFormat("CODE"))
+            ? this.removeCode()
+            : this.code();
     }
 
     // ---
@@ -2608,7 +2598,7 @@ class Squire {
             next = node.nextSibling;
             if (isInline(node)) {
                 if (
-                    node instanceof Text ||
+                    isTextNode(node) ||
                     node.nodeName === 'BR' ||
                     node.nodeName === 'IMG'
                 ) {
@@ -2648,7 +2638,7 @@ class Squire {
             expandRangeToBlockBoundaries(range, root);
             stopNode = root;
         }
-        if (stopNode instanceof Text) {
+        if (isTextNode(stopNode)) {
             return this.focus();
         }
 
@@ -2711,6 +2701,56 @@ class Squire {
 
         return this.focus();
     }
+
+    // SnappyMail
+
+    changeIndentationLevel(direction: string) {
+        let parent = this.getSelectionClosest('UL,OL,BLOCKQUOTE');
+        if (parent || "increase" === direction) {
+            direction += (!parent || "BLOCKQUOTE" === parent.nodeName) ? "Quote" : "List";
+            return (this as any)[direction + "Level"]();
+        }
+    }
+
+    getSelectionClosest(selector: string) {
+        return getClosest(this.getSelection().commonAncestorContainer, this._root, selector);
+    }
+
+    setAttribute(name: string, value: string | null) {
+        let range = this.getSelection();
+        let start = range?.startContainer || {};
+        let end = (range?.endContainer || {}) as Text;
+        // When the selection is all the text inside an element, set style on the element itself
+        if ("dir" == name || (isTextNode(start) && 0 === range.startOffset && start === end && end.length === range.endOffset)) {
+            this._recordUndoState(range);
+            setAttributes(start.parentNode as HTMLElement, {[name]: value});
+//            this.setRange(range);
+            this._docWasChanged();
+        }
+        // Else when it should remove the attribute
+        else if (null == value) {
+            this._recordUndoState(range);
+            let node = getClosest(range.commonAncestorContainer, this._root, '*');
+            range.collapsed
+                ? setAttributes(node, {[name]: value})
+                : node.querySelectorAll('*').forEach((el: HTMLElement) => setAttributes(el, {[name]: value}));
+//            this.setRange(range);
+            this._docWasChanged();
+        }
+        // Else create a span element
+        else {
+            this.changeFormat({
+                tag: "SPAN",
+                attributes: {[name]: value}
+            }, null, range);
+        }
+        return this.focus();
+    }
+
+    setStyle(style: string | null) {
+        this.setAttribute("style", style);
+    }
+
 }
 
 // ---

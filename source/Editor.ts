@@ -74,21 +74,12 @@ type TagAttributes = {
 
 interface SquireConfig {
     blockTag: string;
-    blockAttributes: null | Record<string, string>;
     tagAttributes: TagAttributes;
-    classNames: {
-        color: string;
-        fontFamily: string;
-        fontSize: string;
-        highlight: string;
-    };
     undo: {
         documentSizeThreshold: number;
         undoLimit: number;
     };
     addLinks: boolean;
-    willCutCopy: null | ((html: string) => string);
-    toPlainText: null | ((html: string) => string);
     sanitizeToDOMFragment: (html: string, editor: Squire) => DocumentFragment;
     didError: (x: any) => void;
 }
@@ -209,21 +200,12 @@ class Squire {
     _makeConfig(userConfig?: object): SquireConfig {
         const config = {
             blockTag: 'DIV',
-            blockAttributes: null,
             tagAttributes: {},
-            classNames: {
-                color: 'color',
-                fontFamily: 'font',
-                fontSize: 'size',
-                highlight: 'highlight',
-            },
             undo: {
                 documentSizeThreshold: -1, // -1 means no threshold
                 undoLimit: -1, // -1 means no limit
             },
             addLinks: true,
-            willCutCopy: null,
-            toPlainText: null,
             sanitizeToDOMFragment: (
                 html: string,
                 /* editor: Squire, */
@@ -239,7 +221,7 @@ class Squire {
                     ? document.importNode(frag, true)
                     : document.createDocumentFragment();
             },
-            didError: (error: any): void => console.log(error),
+            didError: (error: any): void => console.error(error),
         };
         if (userConfig) {
             Object.assign(config, userConfig);
@@ -721,7 +703,6 @@ class Squire {
 
     _getPath(node: Node) {
         const root = this._root;
-        const config = this._config;
         let path = '';
         if (node && node !== root) {
             const parent = node.parentNode;
@@ -731,7 +712,6 @@ class Squire {
                 const classList = node.classList;
                 const classNames = Array.from(classList).sort();
                 const dir = node.dir;
-                const styleNames = config.classNames;
                 path += (path ? '>' : '') + node.nodeName;
                 if (id) {
                     path += '#' + id;
@@ -742,25 +722,6 @@ class Squire {
                 }
                 if (dir) {
                     path += '[dir=' + dir + ']';
-                }
-                if (classList.contains(styleNames.highlight)) {
-                    path +=
-                        '[backgroundColor=' +
-                        node.style.backgroundColor.replace(/ /g, '') +
-                        ']';
-                }
-                if (classList.contains(styleNames.color)) {
-                    path +=
-                        '[color=' + node.style.color.replace(/ /g, '') + ']';
-                }
-                if (classList.contains(styleNames.fontFamily)) {
-                    path +=
-                        '[fontFamily=' +
-                        node.style.fontFamily.replace(/ /g, '') +
-                        ']';
-                }
-                if (classList.contains(styleNames.fontSize)) {
-                    path += '[fontSize=' + node.style.fontSize + ']';
                 }
             }
         }
@@ -1208,14 +1169,8 @@ class Squire {
         const lines = plainText.split('\n');
         const config = this._config;
         const tag = config.blockTag;
-        const attributes = config.blockAttributes;
         const closeBlock = '</' + tag + '>';
-        let openBlock = '<' + tag;
-
-        for (const attr in attributes) {
-            openBlock += ' ' + attr + '="' + escapeHTML(attributes[attr]) + '"';
-        }
-        openBlock += '>';
+        let openBlock = '<' + tag + '>';
 
         for (let i = 0, l = lines.length; i < l; i += 1) {
             let line = lines[i];
@@ -1834,32 +1789,27 @@ class Squire {
     // ---
 
     setFontFace(name: string | null): Squire {
-        const className = this._config.classNames.fontFamily;
         return this.changeFormat(
             name
                 ? {
                       tag: 'SPAN',
                       attributes: {
-                          class: className,
                           style: 'font-family: ' + name + ', sans-serif;',
                       },
                   }
                 : null,
             {
                 tag: 'SPAN',
-                attributes: { class: className },
             },
         );
     }
 
     setFontSize(size: string | null): Squire {
-        const className = this._config.classNames.fontSize;
         return this.changeFormat(
             size
                 ? {
                       tag: 'SPAN',
                       attributes: {
-                          class: className,
                           style:
                               'font-size: ' +
                               (typeof size === 'number' ? size + 'px' : size),
@@ -1868,45 +1818,38 @@ class Squire {
                 : null,
             {
                 tag: 'SPAN',
-                attributes: { class: className },
             },
         );
     }
 
     setTextColor(color: string | null): Squire {
-        const className = this._config.classNames.color;
         return this.changeFormat(
             color
                 ? {
                       tag: 'SPAN',
                       attributes: {
-                          class: className,
                           style: 'color:' + color,
                       },
                   }
                 : null,
             {
                 tag: 'SPAN',
-                attributes: { class: className },
             },
         );
     }
 
     setHighlightColor(color: string | null): Squire {
-        const className = this._config.classNames.highlight;
         return this.changeFormat(
             color
                 ? {
                       tag: 'SPAN',
                       attributes: {
-                          class: className,
                           style: 'background-color:' + color,
                       },
                   }
                 : null,
             {
                 tag: 'SPAN',
-                attributes: { class: className },
             },
         );
     }
@@ -1928,7 +1871,7 @@ class Squire {
     createDefaultBlock(children?: Node[]): HTMLElement {
         const config = this._config;
         return fixCursor(
-            createElement(config.blockTag, config.blockAttributes, children),
+            createElement(config.blockTag, null, children),
         ) as HTMLElement;
     }
 
@@ -2072,15 +2015,13 @@ class Squire {
         ) as Node;
 
         const config = this._config;
-        let splitProperties: Record<string, string> | null = null;
         if (!splitTag) {
             splitTag = config.blockTag;
-            splitProperties = config.blockAttributes;
         }
 
         // Make sure the new node is the correct type.
-        if (!hasTagAttributes(nodeAfterSplit, splitTag, splitProperties)) {
-            block = createElement(splitTag, splitProperties);
+        if (!hasTagAttributes(nodeAfterSplit, splitTag)) {
+            block = createElement(splitTag);
             if ((nodeAfterSplit as HTMLElement).dir) {
                 (block as HTMLElement).dir = (
                     nodeAfterSplit as HTMLElement

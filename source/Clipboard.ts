@@ -18,10 +18,7 @@ const extractRangeToClipboard = (
     event: ClipboardEvent,
     range: Range,
     root: HTMLElement,
-    removeRangeFromDocument: boolean,
-    toCleanHTML: null | ((html: string) => string),
-    toPlainText: null | ((html: string) => string),
-    plainTextOnly: boolean,
+    removeRangeFromDocument?: boolean,
 ): boolean => {
     // Edge only seems to support setting plain text as of 2016-03-11.
     const clipboardData = event.clipboardData;
@@ -30,7 +27,7 @@ const extractRangeToClipboard = (
     }
     // First get the plain text version from the range (unless we have a custom
     // HTML -> Text conversion fn)
-    let text = toPlainText ? '' : getTextContentsOfRange(range);
+    let text = getTextContentsOfRange(range);
 
     // Clipboard content should include all parents within block, or all
     // parents up to root if selection across blocks
@@ -73,7 +70,8 @@ const extractRangeToClipboard = (
     }
 
     // Get HTML version of data
-    let html: string | undefined;
+    let html: string | undefined,
+        plainTextOnly = false;
     if (
         contents.childNodes.length === 1 &&
         contents.childNodes[0] instanceof Text
@@ -86,14 +84,6 @@ const extractRangeToClipboard = (
         const node = createElement('DIV') as HTMLDivElement;
         node.append(contents);
         html = node.innerHTML;
-        if (toCleanHTML) {
-            html = toCleanHTML(html);
-        }
-    }
-
-    // Get Text version of data if converting from HTML
-    if (toPlainText && html !== undefined) {
-        text = toPlainText(html);
     }
 
     // Firefox (and others?) returns unix line endings (\n) even on Windows.
@@ -133,9 +123,6 @@ const _onCut = function (this: Squire, event: ClipboardEvent): void {
         range,
         root,
         true,
-        this._config.willCutCopy,
-        this._config.toPlainText,
-        false,
     );
     if (!handled) {
         setTimeout(() => {
@@ -156,10 +143,6 @@ const _onCopy = function (this: Squire, event: ClipboardEvent): void {
         event,
         this.getSelection(),
         this._root,
-        false,
-        this._config.willCutCopy,
-        this._config.toPlainText,
-        false,
     );
 };
 

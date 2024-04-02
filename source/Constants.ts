@@ -12,7 +12,6 @@ const isMac = /Mac OS X/.test(ua);
 const isWin = /Windows NT/.test(ua);
 const isIOS =
     /iP(?:ad|hone|od)/.test(ua) || (isMac && !!navigator.maxTouchPoints);
-const isAndroid = /Android/.test(ua);
 
 const isGecko = /Gecko\//.test(ua);
 const isWebKit = /WebKit\//.test(ua);
@@ -38,7 +37,6 @@ export {
     isMac,
     isWin,
     isIOS,
-    isAndroid,
     isGecko,
     isWebKit,
     ctrlKey,

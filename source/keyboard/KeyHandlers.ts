@@ -6,7 +6,6 @@ import {
 } from '../Constants';
 import { deleteContentsOfRange } from '../range/InsertDelete';
 import type { Squire } from '../Editor';
-import { Enter } from './Enter';
 import { Backspace } from './Backspace';
 import { Delete } from './Delete';
 import { ShiftTab, Tab } from './Tab';

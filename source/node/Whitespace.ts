@@ -1,16 +1,15 @@
 import { ZWS, notWS } from '../Constants';
 import { isInline } from './Category';
-import { getLength } from './Node';
+import { getLength, isElement, isBrElement } from './Node';
 import { SHOW_ELEMENT_OR_TEXT, SHOW_TEXT, TreeIterator } from './TreeIterator';
 
 // ---
 
-const notWSTextNode = (node: Node): boolean => {
-    return node instanceof Element
-        ? node.nodeName === 'BR'
-        : // okay if data is 'undefined' here.
-          notWS.test((node as CharacterData).data);
-};
+const notWSTextNode = (node: Node): boolean =>
+    isElement(node)
+        ? isBrElement(node)
+        // okay if data is 'undefined' here.
+        : notWS.test((node as CharacterData).data);
 
 const isLineBreak = (br: Element, isLBIfEmptyBlock: boolean): boolean => {
     let block = br.parentNode!;

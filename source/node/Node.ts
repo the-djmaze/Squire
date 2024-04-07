@@ -12,14 +12,7 @@ const createElement = (
         children = props;
         props = null;
     }
-    if (props) {
-        for (const attr in props) {
-            const value = props[attr];
-            if (value !== undefined) {
-                el.setAttribute(attr, value);
-            }
-        }
-    }
+    setAttributes(el, props);
     children && el.append(...children);
     return el;
 };
@@ -76,31 +69,25 @@ const getNodeBeforeOffset = (node: Node, offset: number): Node => {
     return node;
 };
 
-const getNodeAfterOffset = (node: Node, offset: number): Node | null => {
-    let returnNode: Node | null = node;
-    if (isElement(returnNode)) {
-        const children = returnNode.childNodes;
+const getNodeAfterOffset = (node: Node | null, offset: number): Node | null => {
+    if (isElement(node)) {
+        const children = (node as Node).childNodes;
         if (offset < children.length) {
-            returnNode = children[offset];
+            node = children[offset];
         } else {
-            while (returnNode && !returnNode.nextSibling) {
-                returnNode = returnNode.parentNode;
+            while (node && !node.nextSibling) {
+                node = node.parentNode;
             }
-            if (returnNode) {
-                returnNode = returnNode.nextSibling;
-            }
+            node && (node = node.nextSibling);
         }
     }
-    return returnNode;
+    return node;
 };
 
-const getLength = (node: Node): number => {
-    return isElement(node) || node instanceof DocumentFragment
+const getLength = (node: Node): number =>
+    isElement(node) || node instanceof DocumentFragment
         ? node.childNodes.length
-        : node instanceof CharacterData
-        ? node.length
-        : 0;
-};
+        : (node as CharacterData).length || 0;
 
 // --- Manipulation
 
@@ -123,10 +110,22 @@ const getClosest = (node: any, root: Element, selector: string) => {
     node = node?.closest(selector);
     return (node && root.contains(node)) ? node : null;
 };
-const isElement = (node: Node) => node instanceof Element;
-const isTextNode = (node: Node) => node instanceof Text;
+const isElement = (node: Node | null) => node instanceof Element;
+const isTextNode = (node: Node | null) => node instanceof Text;
 //  isBrElement = (node: Node) => node instanceof HTMLBRElement;
-const isBrElement = (node: Node) => "BR" === node?.nodeName;
+const isBrElement = (node: Node | null) => "BR" === node?.nodeName;
+const setAttributes = (node: HTMLElement, props: any) => {
+    props && Object.entries(props).forEach(([k,v]) => {
+        if (null == v) {
+            node.removeAttribute(k);
+        } else if ("style" === k && typeof v === "object") {
+            Object.entries(v).forEach(([k,v]) => node.style[k as any] = v);
+        } else {
+            node.setAttribute(k, v as string);
+        }
+    });
+};
+
 
 // --- Export
 
@@ -145,4 +144,5 @@ export {
     isElement,
     isTextNode,
     isBrElement,
+    setAttributes,
 };

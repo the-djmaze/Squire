@@ -20,7 +20,7 @@ import type { Squire } from '../Editor';
 
 // ---
 
-const Delete = (self: Squire, event: KeyboardEvent, range: Range): void => {
+const Delete = (self: Squire, event: Event, range: Range): void => {
     const root = self._root;
     let current: Node | null;
     let next: Node | null;

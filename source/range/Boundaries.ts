@@ -1,7 +1,7 @@
 import { isLeaf } from '../node/Category';
-import { getLength, getNearest } from '../node/Node';
+import { getLength, getNearest, isTextNode, isBrElement } from '../node/Node';
 import { isLineBreak } from '../node/Whitespace';
-import { TEXT_NODE, indexOf } from '../Constants';
+import { indexOf } from '../Constants';
 
 // ---
 
@@ -43,28 +43,25 @@ const isNodeContainedInRange = (
 const moveRangeBoundariesDownTree = (range: Range): void => {
     let { startContainer, startOffset, endContainer, endOffset } = range;
 
-    while (!(startContainer instanceof Text)) {
+    while (!isTextNode(startContainer)) {
         let child: ChildNode | null = startContainer.childNodes[startOffset];
         if (!child || isLeaf(child)) {
             if (startOffset) {
                 child = startContainer.childNodes[startOffset - 1];
-                if (child instanceof Text) {
-                    // Need a new variable to satisfy TypeScript's type checker
-                    // for some reason.
-                    let textChild: Text = child;
+                if (isTextNode(child)) {
                     // If we have an empty text node next to another text node,
                     // just skip and remove it.
                     let prev: ChildNode | null;
                     while (
-                        !textChild.length &&
-                        (prev = textChild.previousSibling) &&
-                        prev instanceof Text
+                        !(child as Text).length &&
+                        (prev = child.previousSibling) &&
+                        isTextNode(prev)
                     ) {
-                        textChild.remove();
-                        textChild = prev;
+                        child.remove();
+                        child = prev;
                     }
-                    startContainer = textChild;
-                    startOffset = textChild.data.length;
+                    startContainer = child;
+                    startOffset = (child as Text).data.length;
                 }
             }
             break;
@@ -73,15 +70,14 @@ const moveRangeBoundariesDownTree = (range: Range): void => {
         startOffset = 0;
     }
     if (endOffset) {
-        while (!(endContainer instanceof Text)) {
+        while (!isTextNode(endContainer)) {
             const child = endContainer.childNodes[endOffset - 1];
             if (!child || isLeaf(child)) {
                 if (
-                    child &&
-                    child.nodeName === 'BR' &&
+                    isBrElement(child) &&
                     !isLineBreak(child as Element, false)
                 ) {
-                    endOffset -= 1;
+                    --endOffset;
                     continue;
                 }
                 break;
@@ -90,7 +86,7 @@ const moveRangeBoundariesDownTree = (range: Range): void => {
             endOffset = getLength(endContainer);
         }
     } else {
-        while (!(endContainer instanceof Text)) {
+        while (!isTextNode(endContainer)) {
             const child = endContainer.firstChild!;
             if (!child || isLeaf(child)) {
                 break;
@@ -132,17 +128,13 @@ const moveRangeBoundariesUpTree = (
         startContainer = parent;
     }
 
-    while (true) {
-        if (endContainer === endMax || endContainer === root) {
-            break;
-        }
+    while (endContainer !== endMax && endContainer !== root) {
         if (
-            endContainer.nodeType !== TEXT_NODE &&
-            endContainer.childNodes[endOffset] &&
-            endContainer.childNodes[endOffset].nodeName === 'BR' &&
+            !isTextNode(endContainer) &&
+            isBrElement(endContainer.childNodes[endOffset]) &&
             !isLineBreak(endContainer.childNodes[endOffset] as Element, false)
         ) {
-            endOffset += 1;
+            ++endOffset;
         }
         if (endOffset !== getLength(endContainer)) {
             break;

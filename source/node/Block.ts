@@ -28,9 +28,8 @@ const getNextBlock = (
     return block !== root ? block : null;
 };
 
-const isEmptyBlock = (block: Element): boolean => {
-    return !block.textContent && !block.querySelector('IMG');
-};
+const isEmptyBlock = (block: Element): boolean =>
+    !block.textContent && !block.querySelector('IMG');
 
 // ---
 

@@ -6,6 +6,9 @@ import {
     getLength,
     detach,
     empty,
+    isElement,
+    isTextNode,
+    isBrElement,
 } from './Node';
 import { isInline, isContainer } from './Category';
 
@@ -18,39 +21,34 @@ const fixCursor = (node: Node): Node => {
     // cursor to appear.
     let fixer: Element | Text | null = null;
 
-    if (node instanceof Text) {
-        return node;
-    }
-
-    if (isInline(node)) {
-        let child = node.firstChild;
-        if (cantFocusEmptyTextNodes) {
-            while (child && child instanceof Text && !child.data) {
-                node.removeChild(child);
-                child = node.firstChild;
+    if (!isTextNode(node)) {
+        if (isInline(node)) {
+            let child = node.firstChild;
+            if (cantFocusEmptyTextNodes) {
+                while (isTextNode(child) && !(child as Text).data) {
+                    node.removeChild(child as Text);
+                    child = node.firstChild;
+                }
+            }
+            if (!child) {
+                fixer = document.createTextNode(cantFocusEmptyTextNodes ? ZWS : '');
+            }
+        } else if (
+            (isElement(node) || node instanceof DocumentFragment) &&
+            !(node as Element).querySelector('BR')
+        ) {
+            fixer = createElement('BR');
+            let child: Element | null;
+            while ((child = (node as Element).lastElementChild) && !isInline(child)) {
+                node = child;
             }
         }
-        if (!child) {
-            fixer = document.createTextNode(cantFocusEmptyTextNodes ? ZWS : '');
+        if (fixer) {
+            try {
+                node.appendChild(fixer);
+            } catch (error) {}
         }
-    } else if (
-        (node instanceof Element || node instanceof DocumentFragment) &&
-        !node.querySelector('BR')
-    ) {
-        fixer = createElement('BR');
-        let parent: Element | DocumentFragment = node;
-        let child: Element | null;
-        while ((child = parent.lastElementChild) && !isInline(child)) {
-            parent = child;
-        }
-        node = parent;
     }
-    if (fixer) {
-        try {
-            node.appendChild(fixer);
-        } catch (error) {}
-    }
-
     return node;
 };
 
@@ -60,32 +58,23 @@ const fixContainer = (
     root: Element | DocumentFragment,
 ): Node => {
     let wrapper: HTMLElement | null = null;
-    Array.from(container.childNodes).forEach((child) => {
-        const isBR = child.nodeName === 'BR';
+    // Not live, and fast
+    [...container.childNodes].forEach((child) => {
+        const isBR = isBrElement(child);
+//      if (!isBR && child.parentNode == root && isInline(child)
+////       && (blockTag !== "DIV" || (child.matches && !child.matches(phrasingElements)))
         if (!isBR && isInline(child)) {
-            if (!wrapper) {
-                wrapper = createElement('DIV');
-            }
+            wrapper = wrapper || createElement('DIV');
             wrapper.append(child);
         } else if (isBR || wrapper) {
-            if (!wrapper) {
-                wrapper = createElement('DIV');
-            }
+            wrapper = wrapper || createElement('DIV');
             fixCursor(wrapper);
-            if (isBR) {
-                container.replaceChild(wrapper, child);
-            } else {
-                container.insertBefore(wrapper, child);
-            }
+            child[isBR ? "replaceWith" : "before"](wrapper);
             wrapper = null;
         }
-        if (isContainer(child)) {
-            fixContainer(child, root);
-        }
+        isContainer(child) && fixContainer(child, root);
     });
-    if (wrapper) {
-        container.appendChild(fixCursor(wrapper));
-    }
+    wrapper && container.appendChild(fixCursor(wrapper));
     return container;
 };
 
@@ -95,14 +84,14 @@ const split = (
     stopNode: Node,
     root: Element | DocumentFragment,
 ): Node | null => {
-    if (node instanceof Text && node !== stopNode) {
+    if (isTextNode(node) && node !== stopNode) {
         if (typeof offset !== 'number') {
             throw new Error('Offset must be a number to split text node!');
         }
         if (!node.parentNode) {
             throw new Error('Cannot split text node with no parent!');
         }
-        return split(node.parentNode, node.splitText(offset), stopNode, root);
+        return split(node.parentNode, (node as Text).splitText(offset), stopNode, root);
     }
 
     let nodeAfterSplit: Node | null =
@@ -112,7 +101,7 @@ const split = (
                 : null
             : offset;
     const parent = node.parentNode;
-    if (!parent || node === stopNode || !(node instanceof Element)) {
+    if (!parent || node === stopNode || !isElement(node)) {
         return nodeAfterSplit;
     }
 
@@ -159,10 +148,10 @@ const _mergeInlines = (
 ): void => {
     const children = node.childNodes;
     let l = children.length;
-    const frags: DocumentFragment[] = [];
+    let frags: DocumentFragment[] = [];
     while (l--) {
         const child = children[l];
-        const prev = l ? children[l - 1] : null;
+        const prev = l && children[l - 1];
         if (prev && isInline(child) && areAlike(child, prev)) {
             if (fakeRange.startContainer === child) {
                 fakeRange.startContainer = prev;
@@ -174,7 +163,7 @@ const _mergeInlines = (
             }
             if (fakeRange.startContainer === node) {
                 if (fakeRange.startOffset > l) {
-                    fakeRange.startOffset -= 1;
+                    --fakeRange.startOffset;
                 } else if (fakeRange.startOffset === l) {
                     fakeRange.startContainer = prev;
                     fakeRange.startOffset = getLength(prev);
@@ -182,38 +171,36 @@ const _mergeInlines = (
             }
             if (fakeRange.endContainer === node) {
                 if (fakeRange.endOffset > l) {
-                    fakeRange.endOffset -= 1;
+                    --fakeRange.endOffset;
                 } else if (fakeRange.endOffset === l) {
                     fakeRange.endContainer = prev;
                     fakeRange.endOffset = getLength(prev);
                 }
             }
             detach(child);
-            if (child instanceof Text) {
-                (prev as Text).appendData(child.data);
+            if (isTextNode(child)) {
+                (prev as Text).appendData((child as Text).data);
             } else {
                 frags.push(empty(child));
             }
-        } else if (child instanceof Element) {
-            let frag: DocumentFragment | undefined;
-            while ((frag = frags.pop())) {
-                child.append(frag);
-            }
+        } else if (isElement(child)) {
+            (child as Element).append(...frags);
+            frags = [];
             _mergeInlines(child, fakeRange);
         }
     }
 };
 
 const mergeInlines = (node: Node, range: Range): void => {
-    const element = node instanceof Text ? node.parentNode : node;
-    if (element instanceof Element) {
+    const element = isTextNode(node) ? node.parentNode : node;
+    if (isElement(element)) {
         const fakeRange = {
             startContainer: range.startContainer,
             startOffset: range.startOffset,
             endContainer: range.endContainer,
             endOffset: range.endOffset,
         };
-        _mergeInlines(element, fakeRange);
+        _mergeInlines((element as Element), fakeRange);
         range.setStart(fakeRange.startContainer, fakeRange.startOffset);
         range.setEnd(fakeRange.endContainer, fakeRange.endOffset);
     }
@@ -231,7 +218,7 @@ const mergeWithBlock = (
     while (
         (parent = container.parentNode) &&
         parent !== root &&
-        parent instanceof Element &&
+        isElement(parent) &&
         parent.childNodes.length === 1
     ) {
         container = parent;
@@ -242,9 +229,9 @@ const mergeWithBlock = (
 
     // Remove extra <BR> fixer if present.
     const last = block.lastChild;
-    if (last && last.nodeName === 'BR') {
-        block.removeChild(last);
-        offset -= 1;
+    if (isBrElement(last)) {
+        (last as Element).remove();
+        --offset;
     }
 
     block.appendChild(empty(next));
@@ -266,23 +253,18 @@ const mergeContainers = (node: Node, root: Element): void => {
 
     if (prev && areAlike(prev, node)) {
         if (!isContainer(prev)) {
-            if (isListItem) {
-                const block = createElement('DIV');
-                block.append(empty(prev));
-                prev.appendChild(block);
-            } else {
+            if (!isListItem) {
                 return;
             }
+            const block = createElement('DIV');
+            block.append(empty(prev));
+            prev.appendChild(block);
         }
         detach(node);
         const needsFix = !isContainer(node);
         prev.appendChild(empty(node));
-        if (needsFix) {
-            fixContainer(prev, root);
-        }
-        if (first) {
-            mergeContainers(first, root);
-        }
+        needsFix && fixContainer(prev, root);
+        first && mergeContainers(first, root);
     } else if (isListItem) {
         const block = createElement('DIV');
         node.insertBefore(block, first);

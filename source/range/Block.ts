@@ -83,7 +83,7 @@ const rangeDoesStartAtBlockBoundary = (
     // If in the middle or end of a text node, we're not at the boundary.
     if (startContainer instanceof Text) {
         const text = startContainer.data;
-        for (let i = startOffset; i > 0; i -= 1) {
+        for (let i = startOffset; i > 0; --i) {
             if (text.charAt(i - 1) !== ZWS) {
                 return false;
             }
@@ -128,7 +128,7 @@ const rangeDoesEndAtBlockBoundary = (range: Range, root: Element): boolean => {
     if (endContainer instanceof Text) {
         const text = endContainer.data;
         const length = text.length;
-        for (let i = endOffset; i < length; i += 1) {
+        for (let i = endOffset; i < length; ++i) {
             if (text.charAt(i) !== ZWS) {
                 return false;
             }

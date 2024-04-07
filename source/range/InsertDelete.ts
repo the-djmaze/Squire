@@ -7,7 +7,7 @@ import {
     fixContainer,
     mergeContainers,
 } from '../node/MergeSplit';
-import { detach, getNearest, getLength } from '../node/Node';
+import { detach, getNearest, getLength, isTextNode, isBrElement } from '../node/Node';
 import { TreeIterator, SHOW_ELEMENT_OR_TEXT } from '../node/TreeIterator';
 import { isInline, isContainer, isLeaf } from '../node/Category';
 import { getNextBlock, isEmptyBlock, getPreviousBlock } from '../node/Block';
@@ -46,10 +46,10 @@ const insertNodeInRange = (range: Range, node: Node): void => {
     let children: NodeListOf<ChildNode>;
 
     // If part way through a text node, split it.
-    if (startContainer instanceof Text) {
+    if (isTextNode(startContainer)) {
         const parent = startContainer.parentNode!;
         children = parent.childNodes;
-        if (startOffset === startContainer.length) {
+        if (startOffset === (startContainer as Text).length) {
             startOffset = indexOf(children, startContainer) + 1;
             if (range.collapsed) {
                 endContainer = parent;
@@ -57,12 +57,12 @@ const insertNodeInRange = (range: Range, node: Node): void => {
             }
         } else {
             if (startOffset) {
-                const afterSplit = startContainer.splitText(startOffset);
+                const afterSplit = (startContainer as Text).splitText(startOffset);
                 if (endContainer === startContainer) {
                     endOffset -= startOffset;
                     endContainer = afterSplit;
                 } else if (endContainer === parent) {
-                    endOffset += 1;
+                    ++endOffset;
                 }
                 startContainer = afterSplit;
             }
@@ -108,7 +108,7 @@ const extractContentsOfRange = (
     if (!common) {
         common = range.commonAncestorContainer;
     }
-    if (common instanceof Text) {
+    if (isTextNode(common)) {
         common = common.parentNode!;
     }
 
@@ -126,9 +126,9 @@ const extractContentsOfRange = (
     }
 
     // Merge text nodes if adjacent
-    if (startContainer instanceof Text && endContainer instanceof Text) {
-        startContainer.appendData(endContainer.data);
-        detach(endContainer);
+    if (isTextNode(startContainer) && isTextNode(endContainer)) {
+        (startContainer as Text).appendData((endContainer as Text).data);
+        detach((endContainer as Text));
         endContainer = startContainer;
         endOffset = startOffset;
     }
@@ -157,7 +157,7 @@ const getAdjacentInlineNode = (
     iterator.currentNode = node;
     let nextNode: Node | null;
     while ((nextNode = iterator[method]())) {
-        if (nextNode instanceof Text || isLeaf(nextNode)) {
+        if (isTextNode(nextNode) || isLeaf(nextNode)) {
             return nextNode;
         }
         if (!isInline(nextNode)) {
@@ -204,11 +204,9 @@ const deleteContentsOfRange = (
 
     // Ensure root has a block-level element in it.
     const child = root.firstChild;
-    if (!child || child.nodeName === 'BR') {
+    if (!child || isBrElement(child)) {
         fixCursor(root);
-        if (root.firstChild) {
-            range.selectNodeContents(root.firstChild);
-        }
+        root.firstChild && range.selectNodeContents(root.firstChild);
     }
 
     range.collapse(true);
@@ -272,9 +270,7 @@ const deleteContentsOfRange = (
             offset = beforeOffset;
         }
     }
-    if (node) {
-        node.replaceData(offset, 1, ' '); // nbsp
-    }
+    node && node.replaceData(offset, 1, ' '); // nbsp
     // Range needs to be put back in place
     range.setStart(startContainer, startOffset);
     range.collapse(true);

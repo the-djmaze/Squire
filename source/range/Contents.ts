@@ -1,6 +1,7 @@
 import { SHOW_ELEMENT_OR_TEXT, TreeIterator } from '../node/TreeIterator';
 import { isNodeContainedInRange } from './Boundaries';
 import { isInline } from '../node/Category';
+import { isElement, isTextNode } from '../node/Node';
 
 // ---
 
@@ -25,15 +26,15 @@ const getTextContentsOfRange = (range: Range) => {
     let value: string;
 
     if (
-        (!(node instanceof Element) && !(node instanceof Text)) ||
-        !walker.filter(node)
+        (!isElement(node) && !isTextNode(node)) ||
+        !walker.filter(node as Element)
     ) {
         node = walker.nextNode();
     }
 
     while (node) {
-        if (node instanceof Text) {
-            value = node.data;
+        if (isTextNode(node)) {
+            value = (node as Text).data;
             if (value && /\S/.test(value)) {
                 if (node === endContainer) {
                     value = value.slice(0, range.endOffset);

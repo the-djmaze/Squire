@@ -16,7 +16,7 @@ import { afterDelete, detachUneditableNode } from './KeyHelpers';
 
 // ---
 
-const Backspace = (self: Squire, event: KeyboardEvent, range: Range): void => {
+const Backspace = (self: Squire, event: Event, range: Range): void => {
     const root: Element = self._root;
     self._removeZWS();
     // Record undo checkpoint.

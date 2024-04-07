@@ -6,7 +6,7 @@ Promise.all([
     esbuild.build({
         entryPoints: ['source/Legacy.ts'],
         bundle: true,
-        target: 'esnext',
+        target: 'es2021',
         format: 'iife',
         outfile: 'dist/squire-raw.js',
     }),
@@ -15,7 +15,7 @@ Promise.all([
         bundle: true,
         minify: true,
         sourcemap: 'linked',
-        target: 'esnext',
+        target: 'es2021',
         format: 'iife',
         outfile: 'dist/squire.js',
     }),

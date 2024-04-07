@@ -131,6 +131,8 @@ class Squire {
 
     _mutation: MutationObserver;
 
+	[key: string]: any;
+
     constructor(root: HTMLElement, config?: Partial<SquireConfig>) {
         this._root = root;
 
@@ -160,10 +162,9 @@ class Squire {
         // On blur, restore focus except if the user taps or clicks to focus a
         // specific point. Can't actually use click event because focus happens
         // before click, so use mousedown/touchstart
-        this.addEventListener('blur', this._enableRestoreSelection);
-        this.addEventListener('mousedown', this._disableRestoreSelection);
-        this.addEventListener('touchstart', this._disableRestoreSelection);
-        this.addEventListener('focus', this._restoreSelection);
+        this.addEventListener('blur', () => this._willRestoreSelection = true);
+        this.addEventListener('pointerdown mousedown touchstart', () => this._willRestoreSelection = false)
+        this.addEventListener('focus', () => this._willRestoreSelection && this.setSelection(this._lastSelection))
 
         // Clipboard support
         this._isShiftDown = false;
@@ -465,30 +466,13 @@ class Squire {
         return this;
     }
 
-    // --- Selection and bookmarking
-
-    _enableRestoreSelection(): void {
-        this._willRestoreSelection = true;
-    }
-
-    _disableRestoreSelection(): void {
-        this._willRestoreSelection = false;
-    }
-
-    _restoreSelection() {
-        if (this._willRestoreSelection) {
-            this.setSelection(this._lastSelection);
-        }
-    }
-
     // ---
 
     _removeZWS(): void {
-        if (!this._mayHaveZWS) {
-            return;
+        if (this._mayHaveZWS) {
+            removeZWS(this._root);
+            this._mayHaveZWS = false;
         }
-        removeZWS(this._root);
-        this._mayHaveZWS = false;
     }
 
     // ---
@@ -539,15 +523,13 @@ class Squire {
             let endOffset = indexOf(endContainer.childNodes, end);
 
             if (startContainer === endContainer) {
-                endOffset -= 1;
+                --endOffset;
             }
 
             start.remove();
             end.remove();
 
-            if (!range) {
-                range = document.createRange();
-            }
+            range = range || document.createRange();
             range.setStart(startContainer, startOffset);
             range.setEnd(endContainer, endOffset);
 
@@ -605,10 +587,7 @@ class Squire {
                 range = null;
             }
         }
-        if (!range) {
-            range = createRange(root.firstElementChild || root, 0);
-        }
-        return range;
+        return range || createRange(root.firstElementChild || root, 0);
     }
 
     setSelection(range: Range): Squire {
@@ -616,9 +595,7 @@ class Squire {
         // If we're setting selection, that automatically, and synchronously,
         // triggers a focus event. So just store the selection and mark it as
         // needing restore on focus.
-        if (!this._isFocused) {
-            this._enableRestoreSelection();
-        } else {
+        if (this._isFocused) {
             const selection = window.getSelection();
             if (selection) {
                 if ('setBaseAndExtent' in Selection.prototype) {
@@ -633,6 +610,8 @@ class Squire {
                     selection.addRange(range);
                 }
             }
+        } else {
+            this._willRestoreSelection = true;
         }
         return this;
     }
@@ -828,7 +807,7 @@ class Squire {
             // limit the number of saved undo states.
             // Threshold is in bytes, JS uses 2 bytes per character
             if (replace) {
-                undoIndex -= 1;
+                --undoIndex;
             }
             if (undoThreshold > -1 && html.length * 2 > undoThreshold) {
                 if (undoLimit > -1 && undoIndex > undoLimit) {
@@ -841,16 +820,14 @@ class Squire {
             // Save data
             undoStack[undoIndex] = html;
             this._undoIndex = undoIndex;
-            this._undoStackLength += 1;
+            ++this._undoStackLength;
             this._isInUndoState = true;
         }
         return this;
     }
 
     saveUndoState(range?: Range): Squire {
-        if (!range) {
-            range = this.getSelection();
-        }
+        range = range || this.getSelection();
         this._recordUndoState(range, this._isInUndoState);
         this._getRangeAndRemoveBookmark(range);
 
@@ -862,7 +839,7 @@ class Squire {
         if (this._undoIndex !== 0 || !this._isInUndoState) {
             // Make sure any changes since last checkpoint are saved.
             this._recordUndoState(this.getSelection(), false);
-            this._undoIndex -= 1;
+            --this._undoIndex;
             this._setRawHTML(this._undoStack[this._undoIndex]);
             const range = this._getRangeAndRemoveBookmark();
             if (range) {
@@ -884,7 +861,7 @@ class Squire {
         const undoIndex = this._undoIndex;
         const undoStackLength = this._undoStackLength;
         if (undoIndex + 1 < undoStackLength && this._isInUndoState) {
-            this._undoIndex += 1;
+            ++this._undoIndex;
             this._setRawHTML(this._undoStack[this._undoIndex]);
             const range = this._getRangeAndRemoveBookmark();
             if (range) {
@@ -940,9 +917,7 @@ class Squire {
             this._saveRangeToBookmark(range);
         }
         const html = this._getRawHTML().replace(/\u200B/g, '');
-        if (withBookmark) {
-            this._getRangeAndRemoveBookmark(range);
-        }
+        withBookmark && this._getRangeAndRemoveBookmark(range);
         return html;
     }
 
@@ -1059,9 +1034,7 @@ class Squire {
             this.setSelection(range);
             this._updatePath(range, true);
             // Safari sometimes loses focus after paste. Weird.
-            if (isPaste) {
-                this.focus();
-            }
+            isPaste && this.focus();
         } catch (error) {
             this._config.didError(error);
         }
@@ -1069,9 +1042,7 @@ class Squire {
     }
 
     insertElement(el: Element, range?: Range): Squire {
-        if (!range) {
-            range = this.getSelection();
-        }
+        range = range || this.getSelection();
         range.collapse(true);
         if (isInline(el)) {
             insertNodeInRange(range, el);
@@ -1150,7 +1121,7 @@ class Squire {
             const startContainer: Node = range.startContainer;
             let offset = range.startOffset;
             let textNode: Text;
-            if (!startContainer || !(startContainer instanceof Text)) {
+            if (!startContainer || !isTextNode(startContainer)) {
                 const text = document.createTextNode('');
                 startContainer.insertBefore(
                     text,
@@ -1159,7 +1130,7 @@ class Squire {
                 textNode = text;
                 offset = 0;
             } else {
-                textNode = startContainer;
+                textNode = startContainer as Text;
             }
             let doInsert = true;
             if (isPaste) {
@@ -1188,7 +1159,7 @@ class Squire {
         const closeBlock = '</' + tag + '>';
         let openBlock = '<' + tag + '>';
 
-        for (let i = 0, l = lines.length; i < l; i += 1) {
+        for (let i = 0, l = lines.length; i < l; ++i) {
             let line = lines[i];
             line = escapeHTML(line).replace(/ (?=(?: |$))/g, '&nbsp;');
             // We don't wrap the first line in the block, so if it gets inserted
@@ -1220,14 +1191,12 @@ class Squire {
             fontSize: undefined,
         } as Record<string, string | undefined>;
 
-        if (!range) {
-            range = this.getSelection();
-        }
+        range = range || this.getSelection();
 
         let seenAttributes = 0;
         let element: Node | null = range.commonAncestorContainer;
         if (range.collapsed || isTextNode(element)) {
-            if (element instanceof Text) {
+            if (isTextNode(element)) {
                 element = element.parentNode!;
             }
             while (seenAttributes < 4 && element) {
@@ -1236,22 +1205,22 @@ class Squire {
                     const color = style.color;
                     if (!fontInfo.color && color) {
                         fontInfo.color = color;
-                        seenAttributes += 1;
+                        ++seenAttributes;
                     }
                     const backgroundColor = style.backgroundColor;
                     if (!fontInfo.backgroundColor && backgroundColor) {
                         fontInfo.backgroundColor = backgroundColor;
-                        seenAttributes += 1;
+                        ++seenAttributes;
                     }
                     const fontFamily = style.fontFamily;
                     if (!fontInfo.fontFamily && fontFamily) {
                         fontInfo.fontFamily = fontFamily;
-                        seenAttributes += 1;
+                        ++seenAttributes;
                     }
                     const fontSize = style.fontSize;
                     if (!fontInfo.fontSize && fontSize) {
                         fontInfo.fontSize = fontSize;
-                        seenAttributes += 1;
+                        ++seenAttributes;
                     }
                 }
                 element = element.parentNode;
@@ -1274,16 +1243,14 @@ class Squire {
         if (!attributes) {
             attributes = {};
         }
-        if (!range) {
-            range = this.getSelection();
-        }
+        range = range || this.getSelection();
 
         // Move range up one level in the DOM tree if at the edge of a text
         // node, so we don't consider it included when it's not really.
         if (
             !range.collapsed &&
-            range.startContainer instanceof Text &&
-            range.startOffset === range.startContainer.length &&
+            isTextNode(range.startContainer) &&
+            range.startOffset === (range.startContainer as Text).length &&
             range.startContainer.nextSibling
         ) {
             range.setStartBefore(range.startContainer.nextSibling);
@@ -1336,9 +1303,7 @@ class Squire {
         partial?: boolean,
     ): Squire {
         // Normalise the arguments and get selection
-        if (!range) {
-            range = this.getSelection();
-        }
+        range = range || this.getSelection();
 
         // Save undo checkpoint
         this.saveUndoState(range);
@@ -1379,7 +1344,7 @@ class Squire {
             const focusNode = el.firstChild || el;
             // Focus after the ZWS if present
             const focusOffset =
-                focusNode instanceof Text ? focusNode.length : 0;
+                isTextNode(focusNode) ? (focusNode as Text).length : 0;
             range.setStart(focusNode, focusOffset);
             range.collapse(true);
 
@@ -1426,9 +1391,9 @@ class Squire {
             // Make sure we start with a valid node.
             walker.currentNode = startContainer;
             if (
-                (!(startContainer instanceof Element) &&
-                    !(startContainer instanceof Text)) ||
-                !walker.filter(startContainer)
+                (!isElement(startContainer) &&
+                    !isTextNode(startContainer)) ||
+                !walker.filter(startContainer as Element)
             ) {
                 const next = walker.nextNode();
                 // If there are no interesting nodes in the selection, abort
@@ -1457,7 +1422,7 @@ class Squire {
                             endContainer = node;
                             endOffset -= startOffset;
                         } else if (endContainer === startContainer.parentNode) {
-                            endOffset += 1;
+                            ++endOffset;
                         }
                         startContainer = node;
                         startOffset = 0;
@@ -1520,6 +1485,7 @@ class Squire {
                 return;
             }
 
+            let isText = isTextNode(node);
             let child: Node;
             let next: Node;
 
@@ -1529,7 +1495,7 @@ class Squire {
                 // Ignore bookmarks and empty text nodes
                 if (
                     !(node instanceof HTMLInputElement) &&
-                    (!(node instanceof Text) || node.data)
+                    (!isText || (node as Text).data)
                 ) {
                     toWrap.push([exemplar, node]);
                 }
@@ -1537,12 +1503,12 @@ class Squire {
             }
 
             // Split any partially selected text nodes.
-            if (node instanceof Text) {
-                if (node === endContainer && endOffset !== node.length) {
-                    toWrap.push([exemplar, node.splitText(endOffset)]);
+            if (isText) {
+                if (node === endContainer && endOffset !== (node as Text).length) {
+                    toWrap.push([exemplar, (node as Text).splitText(endOffset)]);
                 }
                 if (node === startContainer && startOffset) {
-                    node.splitText(startOffset);
+                    (node as Text).splitText(startOffset);
                     toWrap.push([exemplar, node]);
                 }
             } else {
@@ -1555,20 +1521,12 @@ class Squire {
                 }
             }
         };
-        const formatTags = Array.from(
+        const formatTags = Array.prototype.filter.call(
             (root as Element).getElementsByTagName(tag),
-        ).filter((el: Node): boolean => {
-            return (
-                isNodeContainedInRange(range, el, true) &&
-                hasTagAttributes(el, tag, attributes)
-            );
-        });
+            (el: Node): boolean => isNodeContainedInRange(range, el, true) && hasTagAttributes(el, tag, attributes)
+        );
 
-        if (!partial) {
-            formatTags.forEach((node: Node) => {
-                examineNode(node, node);
-            });
-        }
+        partial || formatTags.forEach((node: Node) => examineNode(node, node));
 
         // Now wrap unselected nodes in the tag
         toWrap.forEach(([el, node]) => {
@@ -1577,9 +1535,7 @@ class Squire {
             el.appendChild(node);
         });
         // and remove old formatting tags.
-        formatTags.forEach((el: Element) => {
-            replaceWith(el, empty(el));
-        });
+        formatTags.forEach((el: Element) => replaceWith(el, empty(el)));
 
         if (cantFocusEmptyTextNodes && fixer) {
             // Clean up any previous ZWS in this block. They are not needed,
@@ -1625,7 +1581,7 @@ class Squire {
             let protocolEnd = url.indexOf(':') + 1;
             if (protocolEnd) {
                 while (url[protocolEnd] === '/') {
-                    protocolEnd += 1;
+                    ++protocolEnd;
                 }
             }
             insertNodeInRange(
@@ -1847,9 +1803,8 @@ class Squire {
     }
 
     createDefaultBlock(children?: Node[]): HTMLElement {
-        const config = this._config;
         return fixCursor(
-            createElement(config.blockTag, null, children),
+            createElement(this._config.blockTag, null, children),
         ) as HTMLElement;
     }
 
@@ -2063,9 +2018,7 @@ class Squire {
         mutates: boolean,
         range?: Range,
     ): Squire {
-        if (!range) {
-            range = this.getSelection();
-        }
+        range = range || this.getSelection();
 
         // Save undo checkpoint
         if (mutates) {
@@ -2092,9 +2045,7 @@ class Squire {
     }
 
     modifyBlocks(modify: (x: DocumentFragment) => Node, range?: Range): Squire {
-        if (!range) {
-            range = this.getSelection();
-        }
+        range = range || this.getSelection();
 
         // 1. Save undo checkpoint and bookmark selection
         this._recordUndoState(range, this._isInUndoState);
@@ -2243,7 +2194,7 @@ class Squire {
                 this._getRangeAndRemoveBookmark(range);
                 this.setSelection(range);
                 this._updatePath(range, true);
-		    }
+            }
         }
         return this.focus();
     }
@@ -2441,7 +2392,7 @@ class Squire {
                     // will be at the end of a block and therefore seem to not
                     // be a line break. But in its original context it was, so
                     // we should also convert it to a block split.
-                    for (let i = 0; i < l; i += 1) {
+                    for (let i = 0; i < l; ++i) {
                         brBreaksLine[i] = isLineBreak(nodes[i], false);
                     }
                     while (l--) {
@@ -2574,9 +2525,7 @@ class Squire {
     }
 
     removeAllFormatting(range?: Range): Squire {
-        if (!range) {
-            range = this.getSelection();
-        }
+        range = range || this.getSelection();
         if (range.collapsed) {
             return this.focus();
         }

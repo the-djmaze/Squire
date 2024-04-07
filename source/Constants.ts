@@ -14,6 +14,7 @@ const isIOS =
     /iP(?:ad|hone|od)/.test(ua) || (isMac && !!navigator.maxTouchPoints);
 
 const isGecko = /Gecko\//.test(ua);
+const isAndroid = /Android/.test(ua);
 const isWebKit = /WebKit\//.test(ua);
 
 const ctrlKey = isMac || isIOS ? 'Meta-' : 'Ctrl-';
@@ -40,6 +41,7 @@ export {
     isWin,
     isIOS,
     isGecko,
+    isAndroid,
     isWebKit,
     ctrlKey,
     cantFocusEmptyTextNodes,

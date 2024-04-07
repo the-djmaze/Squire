@@ -12,6 +12,7 @@ import { ShiftTab, Tab } from './Tab';
 import { Space } from './Space';
 import { rangeDoesEndAtBlockBoundary } from '../range/Block';
 import { moveRangeBoundariesDownTree } from '../range/Boundaries';
+import { isTextNode } from '../node/Node';
 
 // ---
 
@@ -72,20 +73,50 @@ const _onKey = function (this: Squire, event: KeyboardEvent): void {
     }
 };
 
+const mapKeyToFormat = (
+    tag: string,
+    remove?: string | undefined,
+): KeyHandler => {
+    return (self: Squire, event: Event) => {
+        event.preventDefault();
+        self.toggleTag(tag, remove);
+    };
+};
+
+const mapKeyTo = (method: string) => (self: Squire, event: Event) => {
+    event.preventDefault();
+    self[method]();
+};
+
+const toggleList = (type: string, methodIfNotInList: string) => (self: Squire, event: Event) => {
+    event.preventDefault();
+    let parent = self.getSelectionClosest('UL,OL');
+    if (type == parent?.nodeName) {
+        self.removeList();
+    } else {
+        self[methodIfNotInList as keyof Squire]();
+    }
+};
+
+const changeIndentationLevel = (direction: string) => (self: Squire, event: Event) => {
+    event.preventDefault();
+    self.changeIndentationLevel(direction);
+};
+
 // ---
 
 type KeyHandler = (self: Squire, event: KeyboardEvent, range: Range) => void;
 
 const keyHandlers: Record<string, KeyHandler> = {
-    'Backspace': Backspace,
-    'Delete': Delete,
-    'Tab': Tab,
+    Backspace: Backspace,
+    Delete: Delete,
+    Tab: Tab,
     'Shift-Tab': ShiftTab,
     ' ': Space,
-    'ArrowLeft'(self: Squire): void {
+    ArrowLeft(self: Squire): void {
         self._removeZWS();
     },
-    'ArrowRight'(self: Squire, event: KeyboardEvent, range: Range): void {
+    ArrowRight(self: Squire, event: KeyboardEvent, range: Range): void {
         self._removeZWS();
         // Allow right arrow to always break out of <code> block.
         const root = self.getRoot();
@@ -95,12 +126,12 @@ const keyHandlers: Record<string, KeyHandler> = {
             do {
                 if (node.nodeName === 'CODE') {
                     let next = node.nextSibling;
-                    if (!(next instanceof Text)) {
+                    if (!isTextNode(next)) {
                         const textNode = document.createTextNode(' '); // nbsp
                         node.parentNode!.insertBefore(textNode, next);
                         next = textNode;
                     }
-                    range.setStart(next, 1);
+                    range.setStart(next as Text, 1);
                     self.setSelection(range);
                     event.preventDefault();
                     break;
@@ -112,6 +143,25 @@ const keyHandlers: Record<string, KeyHandler> = {
             );
         }
     },
+    [ctrlKey + 'b']: mapKeyToFormat('B'),
+    [ctrlKey + 'i']: mapKeyToFormat('I'),
+    [ctrlKey + 'u']: mapKeyToFormat('U'),
+    [ctrlKey + 'Shift-7']: mapKeyToFormat('S'),
+    [ctrlKey + 'Shift-5']: mapKeyToFormat('SUB', 'SUP'),
+    [ctrlKey + 'Shift-6']: mapKeyToFormat('SUP', 'SUB'),
+    [ctrlKey + "Shift-8"]: toggleList("UL", "makeUnorderedList"),
+    [ctrlKey + "Shift-9"]: toggleList("OL", "makeOrderedList"),
+    [ctrlKey + "["]: changeIndentationLevel("decrease"),
+    [ctrlKey + "]"]: changeIndentationLevel("increase"),
+    [ctrlKey + "d"]: mapKeyTo("toggleCode"),
+    [ctrlKey + "y"]: mapKeyTo("redo"),
+    // Depending on platform, the Shift may cause the key to come through as
+    // upper case, but sometimes not. Just add both as shortcuts — the browser
+    // will only ever fire one or the other.
+    [ctrlKey + "Shift-z"]: mapKeyTo("redo"),
+    [ctrlKey + "Shift-Z"]: mapKeyTo("redo"),
+    ["Redo"]: mapKeyTo("redo")
+//    [ctrlKey + "z"]: mapKeyTo("undo"),
 };
 
 // System standard for page up/down on Mac/iOS is to just scroll, not move the
@@ -127,92 +177,5 @@ if (!isMac && !isIOS) {
 }
 
 // ---
-
-const mapKeyToFormat = (
-    tag: string,
-    remove?: { tag: string } | null,
-): KeyHandler => {
-    remove = remove || null;
-    return (self: Squire, event: Event) => {
-        event.preventDefault();
-        const range = self.getSelection();
-        if (self.hasFormat(tag, null, range)) {
-            self.changeFormat(null, { tag }, range);
-        } else {
-            self.changeFormat({ tag }, remove, range);
-        }
-    };
-};
-
-keyHandlers[ctrlKey + 'b'] = mapKeyToFormat('B');
-keyHandlers[ctrlKey + 'i'] = mapKeyToFormat('I');
-keyHandlers[ctrlKey + 'u'] = mapKeyToFormat('U');
-keyHandlers[ctrlKey + 'Shift-7'] = mapKeyToFormat('S');
-keyHandlers[ctrlKey + 'Shift-5'] = mapKeyToFormat('SUB', { tag: 'SUP' });
-keyHandlers[ctrlKey + 'Shift-6'] = mapKeyToFormat('SUP', { tag: 'SUB' });
-
-keyHandlers[ctrlKey + 'Shift-8'] = (
-    self: Squire,
-    event: KeyboardEvent,
-): void => {
-    event.preventDefault();
-    const path = self.getPath();
-    if (!/(?:^|>)UL/.test(path)) {
-        self.makeUnorderedList();
-    } else {
-        self.removeList();
-    }
-};
-keyHandlers[ctrlKey + 'Shift-9'] = (
-    self: Squire,
-    event: KeyboardEvent,
-): void => {
-    event.preventDefault();
-    const path = self.getPath();
-    if (!/(?:^|>)OL/.test(path)) {
-        self.makeOrderedList();
-    } else {
-        self.removeList();
-    }
-};
-
-keyHandlers[ctrlKey + '['] = (self: Squire, event: KeyboardEvent): void => {
-    event.preventDefault();
-    const path = self.getPath();
-    if (/(?:^|>)BLOCKQUOTE/.test(path) || !/(?:^|>)[OU]L/.test(path)) {
-        self.decreaseQuoteLevel();
-    } else {
-        self.decreaseListLevel();
-    }
-};
-keyHandlers[ctrlKey + ']'] = (self: Squire, event: KeyboardEvent): void => {
-    event.preventDefault();
-    const path = self.getPath();
-    if (/(?:^|>)BLOCKQUOTE/.test(path) || !/(?:^|>)[OU]L/.test(path)) {
-        self.increaseQuoteLevel();
-    } else {
-        self.increaseListLevel();
-    }
-};
-
-keyHandlers[ctrlKey + 'd'] = (self: Squire, event: KeyboardEvent): void => {
-    event.preventDefault();
-    self.toggleCode();
-};
-
-keyHandlers[ctrlKey + 'z'] = (self: Squire, event: KeyboardEvent): void => {
-    event.preventDefault();
-    self.undo();
-};
-keyHandlers[ctrlKey + 'y'] =
-    // Depending on platform, the Shift may cause the key to come through as
-    // upper case, but sometimes not. Just add both as shortcuts — the browser
-    // will only ever fire one or the other.
-    keyHandlers[ctrlKey + 'Shift-z'] =
-    keyHandlers[ctrlKey + 'Shift-Z'] =
-        (self: Squire, event: KeyboardEvent): void => {
-            event.preventDefault();
-            self.redo();
-        };
 
 export { _onKey, keyHandlers };

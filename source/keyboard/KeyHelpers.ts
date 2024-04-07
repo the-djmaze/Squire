@@ -2,7 +2,7 @@ import { ZWS, indexOf } from '../Constants';
 import { getPreviousBlock } from '../node/Block';
 import { isInline, isBlock } from '../node/Category';
 import { fixCursor } from '../node/MergeSplit';
-import { createElement, detach, getNearest } from '../node/Node';
+import { createElement, detach, getNearest, isTextNode } from '../node/Node';
 import { moveRangeBoundariesDownTree } from '../range/Boundaries';
 
 import type { Squire } from '../Editor';
@@ -21,7 +21,7 @@ const afterDelete = (self: Squire, range?: Range): void => {
         let node = range!.startContainer;
         // Climb the tree from the focus point while we are inside an empty
         // inline element
-        if (node instanceof Text) {
+        if (isTextNode(node)) {
             node = node.parentNode!;
         }
         let parent = node;

@@ -19,39 +19,29 @@ const styleToSemantic: Record<
     string,
     { regexp: RegExp; replace: (y: string) => HTMLElement }
 > = {
-    'font-weight': {
+    fontWeight: {
         regexp: /^bold|^700/i,
-        replace(): HTMLElement {
-            return createElement('B');
-        },
+        replace: () => createElement('B'),
     },
-    'font-style': {
+    fontStyle: {
         regexp: /^italic/i,
-        replace(): HTMLElement {
-            return createElement('I');
-        },
+        replace: () => createElement('I'),
     },
-    'font-family': {
+    fontFamily: {
         regexp: notWS,
-        replace(family: string): HTMLElement {
-            return createElement('SPAN', {
-                style: 'font-family:' + family,
-            });
-        },
+        replace: (family: string) => createElement('SPAN', {
+            style: 'font-family:' + family,
+        }),
     },
-    'font-size': {
+    fontSize: {
         regexp: notWS,
-        replace(size: string): HTMLElement {
-            return createElement('SPAN', {
-                style: 'font-size:' + size,
-            });
-        },
+        replace: (size: string) => createElement('SPAN', {
+            style: 'font-size:' + size,
+        }),
     },
-    'text-decoration': {
+    textDecoration: {
         regexp: /^underline/i,
-        replace(): HTMLElement {
-            return createElement('U');
-        },
+        replace: () => createElement('U'),
     },
 };
 
@@ -60,27 +50,25 @@ const replaceStyles = (node: HTMLElement): HTMLElement => {
     let newTreeBottom: HTMLElement | undefined;
     let newTreeTop: HTMLElement | undefined;
 
-    for (const attr in styleToSemantic) {
-        const converter = styleToSemantic[attr];
+    Object.entries(styleToSemantic).forEach(([attr,converter])=>{
         const css = style.getPropertyValue(attr);
         if (css && converter.regexp.test(css)) {
             const el = converter.replace(css);
             if (
-                el.nodeName === node.nodeName &&
-                el.className === node.className
+                el.nodeName !== node.nodeName ||
+                el.className !== node.className
             ) {
-                continue;
+                if (!newTreeTop) {
+                    newTreeTop = el;
+                }
+                if (newTreeBottom) {
+                    newTreeBottom.append(el);
+                }
+                newTreeBottom = el;
+                node.style.removeProperty(attr);
             }
-            if (!newTreeTop) {
-                newTreeTop = el;
-            }
-            if (newTreeBottom) {
-                newTreeBottom.append(el);
-            }
-            newTreeBottom = el;
-            node.style.removeProperty(attr);
         }
-    }
+    });
 
     if (newTreeTop && newTreeBottom) {
         newTreeBottom.append(empty(node));
@@ -94,28 +82,25 @@ const replaceStyles = (node: HTMLElement): HTMLElement => {
     return newTreeBottom || node;
 };
 
-const replaceWithTag = (tag: string) => {
-    return (node: HTMLElement) => {
+const replaceWithTag = (tag: string) =>
+    (node: HTMLElement) => {
         const el = createElement(tag);
-        const attributes = node.attributes;
-        for (let i = 0, l = attributes.length; i < l; i += 1) {
-            const attribute = attributes[i];
-            el.setAttribute(attribute.name, attribute.value);
-        }
+        Array.prototype.forEach.call(node.attributes, attr => el.setAttribute(attr.name, attr.value));
         replaceWith(node, el);
         el.append(empty(node));
         return el;
     };
-};
 
 const fontSizes: Record<string, string> = {
-    '1': '10',
-    '2': '13',
-    '3': '16',
-    '4': '18',
-    '5': '24',
-    '6': '32',
-    '7': '48',
+    1: 'x-small',
+    2: "small",
+    3: "medium",
+    4: "large",
+    5: 'x-large',
+    6: 'xx-large',
+    7: 'xxx-large',
+    '-1': "smaller",
+    '+1': "larger"
 };
 
 const stylesRewriters: Record<string, StyleRewriter> = {
@@ -213,7 +198,7 @@ const cleanTree = (
         SHOW_ELEMENT_OR_TEXT,
     );
 
-    for (let i = 0, l = children.length; i < l; i += 1) {
+    for (let i = 0, l = children.length; i < l; ++i) {
         let child = children[i];
         const nodeName = child.nodeName;
         const rewriter = stylesRewriters[nodeName];
@@ -223,11 +208,11 @@ const cleanTree = (
                 child = rewriter(child);
             } else if (blacklist.test(nodeName)) {
                 node.removeChild(child);
-                i -= 1;
-                l -= 1;
+                --i;
+                --l;
                 continue;
             } else if (!allowedBlock.test(nodeName) && !isInline(child)) {
-                i -= 1;
+                --i;
                 l += childLength - 1;
                 replaceWith(child, empty(child));
                 continue;
@@ -287,8 +272,8 @@ const cleanTree = (
                 }
             }
             node.removeChild(child);
-            i -= 1;
-            l -= 1;
+            --i;
+            --l;
         }
     }
     return node;
@@ -334,41 +319,35 @@ const cleanupBRs = (
     // to a block split, the second will be at the end of a block and
     // therefore seem to not be a line break. But in its original context it
     // was, so we should also convert it to a block split.
-    for (let i = 0; i < l; i += 1) {
+    for (let i = 0; i < l; ++i) {
         brBreaksLine[i] = isLineBreak(brs[i], keepForBlankLine);
     }
     while (l--) {
         const br = brs[l];
         // Cleanup may have removed it
         const parent = br.parentNode;
-        if (!parent) {
-            continue;
-        }
-        // If it doesn't break a line, just remove it; it's not doing
-        // anything useful. We'll add it back later if required by the
-        // browser. If it breaks a line, wrap the content in div tags
-        // and replace the brs.
-        if (!brBreaksLine[l]) {
-            detach(br);
-        } else if (!isInline(parent)) {
-            fixContainer(parent, root);
+        if (parent) {
+            // If it doesn't break a line, just remove it; it's not doing
+            // anything useful. We'll add it back later if required by the
+            // browser. If it breaks a line, wrap the content in div tags
+            // and replace the brs.
+            if (!brBreaksLine[l]) {
+                detach(br);
+            } else if (!isInline(parent)) {
+                fixContainer(parent, root);
+            }
         }
     }
 };
 
 // ---
 
-const escapeHTML = (text: string): string => {
-    return text
-        .split('&')
-        .join('&amp;')
-        .split('<')
-        .join('&lt;')
-        .split('>')
-        .join('&gt;')
-        .split('"')
-        .join('&quot;');
-};
+const escapeHTML = (text: string): string =>
+    text
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;');
 
 // ---
 

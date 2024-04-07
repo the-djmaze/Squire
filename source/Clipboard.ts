@@ -1,5 +1,5 @@
 import { isWin, isGecko, notWS, indexOf } from './Constants';
-import { createElement, detach } from './node/Node';
+import { createElement, detach, isTextNode } from './node/Node';
 import { getStartBlockOfRange, getEndBlockOfRange } from './range/Block';
 import { createRange, deleteContentsOfRange } from './range/InsertDelete';
 import {
@@ -17,88 +17,87 @@ const extractRangeToClipboard = (
     range: Range,
     root: HTMLElement,
     removeRangeFromDocument?: boolean,
-): boolean => {
+): boolean | void => {
     // Edge only seems to support setting plain text as of 2016-03-11.
     const clipboardData = event.clipboardData;
-    if (!clipboardData) {
-        return false;
-    }
-    // First get the plain text version from the range (unless we have a custom
-    // HTML -> Text conversion fn)
-    let text = getTextContentsOfRange(range);
+    if (clipboardData) {
+        // First get the plain text version from the range (unless we have a custom
+        // HTML -> Text conversion fn)
+        let text = getTextContentsOfRange(range);
 
-    // Clipboard content should include all parents within block, or all
-    // parents up to root if selection across blocks
-    const startBlock = getStartBlockOfRange(range, root);
-    const endBlock = getEndBlockOfRange(range, root);
-    let copyRoot = root;
+        // Clipboard content should include all parents within block, or all
+        // parents up to root if selection across blocks
+        const startBlock = getStartBlockOfRange(range, root);
+        const endBlock = getEndBlockOfRange(range, root);
+        let copyRoot = root;
 
-    // If the content is not in well-formed blocks, the start and end block
-    // may be the same, but actually the range goes outside it. Must check!
-    if (
-        startBlock === endBlock &&
-        startBlock?.contains(range.commonAncestorContainer)
-    ) {
-        copyRoot = startBlock;
-    }
+        // If the content is not in well-formed blocks, the start and end block
+        // may be the same, but actually the range goes outside it. Must check!
+        if (
+            startBlock === endBlock &&
+            startBlock?.contains(range.commonAncestorContainer)
+        ) {
+            copyRoot = startBlock;
+        }
 
-    // Extract the contents
-    let contents: Node;
-    if (removeRangeFromDocument) {
-        contents = deleteContentsOfRange(range, root);
-    } else {
-        // Clone range to mutate, then move up as high as possible without
-        // passing the copy root node.
-        range = range.cloneRange();
-        moveRangeBoundariesDownTree(range);
-        moveRangeBoundariesUpTree(range, copyRoot, copyRoot, root);
-        contents = range.cloneContents();
-    }
+        // Extract the contents
+        let contents: Node;
+        if (removeRangeFromDocument) {
+            contents = deleteContentsOfRange(range, root);
+        } else {
+            // Clone range to mutate, then move up as high as possible without
+            // passing the copy root node.
+            range = range.cloneRange();
+            moveRangeBoundariesDownTree(range);
+            moveRangeBoundariesUpTree(range, copyRoot, copyRoot, root);
+            contents = range.cloneContents();
+        }
 
-    // Add any other parents not in extracted content, up to copy root
-    let parent = range.commonAncestorContainer;
-    if (parent instanceof Text) {
-        parent = parent.parentNode!;
-    }
-    while (parent && parent !== copyRoot) {
-        const newContents = parent.cloneNode(false) as Element;
-        newContents.append(contents);
-        contents = newContents;
-        parent = parent.parentNode!;
-    }
+        // Add any other parents not in extracted content, up to copy root
+        let parent = range.commonAncestorContainer;
+        if (isTextNode(parent)) {
+            parent = parent.parentNode!;
+        }
+        while (parent && parent !== copyRoot) {
+            const newContents = parent.cloneNode(false) as Element;
+            newContents.append(contents);
+            contents = newContents;
+            parent = parent.parentNode!;
+        }
 
-    // Get HTML version of data
-    let html: string | undefined,
-        plainTextOnly = false;
-    if (
-        contents.childNodes.length === 1 &&
-        contents.childNodes[0] instanceof Text
-    ) {
-        // Replace nbsp with regular space;
-        // eslint-disable-next-line no-irregular-whitespace
-        text = contents.childNodes[0].data.replace(/ /g, ' ');
-        plainTextOnly = true;
-    } else {
-        const node = createElement('DIV') as HTMLDivElement;
-        node.append(contents);
-        html = node.innerHTML;
-    }
+        // Get HTML version of data
+        let html: string | undefined,
+            plainTextOnly = false;
+        if (
+            contents.childNodes.length === 1 &&
+            contents.childNodes[0] instanceof Text
+        ) {
+            // Replace nbsp with regular space;
+            // eslint-disable-next-line no-irregular-whitespace
+            text = contents.childNodes[0].data.replace(/ /g, ' ');
+            plainTextOnly = true;
+        } else {
+            const node = createElement('DIV') as HTMLDivElement;
+            node.append(contents);
+            html = node.innerHTML;
+        }
 
-    // Firefox (and others?) returns unix line endings (\n) even on Windows.
-    // If on Windows, normalise to \r\n, since Notepad and some other crappy
-    // apps do not understand just \n.
-    if (isWin) {
-        text = text.replace(/\r?\n/g, '\r\n');
-    }
+        // Firefox (and others?) returns unix line endings (\n) even on Windows.
+        // If on Windows, normalise to \r\n, since Notepad and some other crappy
+        // apps do not understand just \n.
+        if (isWin) {
+            text = text.replace(/\r?\n/g, '\r\n');
+        }
 
-    // Set clipboard data
-    if (!plainTextOnly && html && text !== html) {
-        clipboardData.setData('text/html', html);
-    }
-    clipboardData.setData('text/plain', text);
-    event.preventDefault();
+        // Set clipboard data
+        if (!plainTextOnly && html && text !== html) {
+            clipboardData.setData('text/html', html);
+        }
+        clipboardData.setData('text/plain', text);
+        event.preventDefault();
 
-    return true;
+        return true;
+    }
 };
 
 // ---
@@ -116,13 +115,7 @@ const _onCut = function (this: Squire, event: ClipboardEvent): void {
     // Save undo checkpoint
     this.saveUndoState(range);
 
-    const handled = extractRangeToClipboard(
-        event,
-        range,
-        root,
-        true,
-    );
-    if (!handled) {
+    if (!extractRangeToClipboard(event, range, root, true,)) {
         setTimeout(() => {
             try {
                 // If all content removed, ensure div at start of root.

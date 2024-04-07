@@ -1,6 +1,6 @@
 import { notWS } from './Constants';
 import { TreeIterator, SHOW_ELEMENT_OR_TEXT } from './node/TreeIterator';
-import { createElement, empty, detach, replaceWith } from './node/Node';
+import { createElement, empty, detach, replaceWith, isElement, isTextNode } from './node/Node';
 import { isInline, isLeaf } from './node/Category';
 import { fixContainer } from './node/MergeSplit';
 import { isLineBreak } from './node/Whitespace';
@@ -51,9 +51,9 @@ const replaceStyles = (node: HTMLElement): HTMLElement => {
     let newTreeTop: HTMLElement | undefined;
 
     Object.entries(styleToSemantic).forEach(([attr,converter])=>{
-        const css = style.getPropertyValue(attr);
-        if (css && converter.regexp.test(css)) {
-            const el = converter.replace(css);
+        const css = style[attr as keyof CSSStyleDeclaration];
+        if (css && converter.regexp.test(css as string)) {
+            const el = converter.replace(css as string);
             if (
                 el.nodeName !== node.nodeName ||
                 el.className !== node.className
@@ -221,8 +221,8 @@ const cleanTree = (
                 cleanTree(child, config, preserveWS || nodeName === 'PRE');
             }
         } else {
-            if (child instanceof Text) {
-                let data = child.data;
+            if (isTextNode(child)) {
+                let data = (child as Text).data;
                 const startsWithWS = !notWS.test(data.charAt(0));
                 const endsWithWS = !notWS.test(data.charAt(data.length - 1));
                 if (preserveWS || (!startsWithWS && !endsWithWS)) {
@@ -236,8 +236,8 @@ const cleanTree = (
                     while ((sibling = walker.previousPONode())) {
                         if (
                             sibling.nodeName === 'IMG' ||
-                            (sibling instanceof Text &&
-                                notWS.test(sibling.data))
+                            (isTextNode(sibling) &&
+                                notWS.test((sibling as Text).data))
                         ) {
                             break;
                         }
@@ -254,8 +254,8 @@ const cleanTree = (
                     while ((sibling = walker.nextNode())) {
                         if (
                             sibling.nodeName === 'IMG' ||
-                            (sibling instanceof Text &&
-                                notWS.test(sibling.data))
+                            (isTextNode(sibling) &&
+                                notWS.test((sibling as Text).data))
                         ) {
                             break;
                         }
@@ -267,7 +267,7 @@ const cleanTree = (
                     data = data.replace(/[ \t\r\n]+$/g, sibling ? ' ' : '');
                 }
                 if (data) {
-                    child.data = data;
+                    (child as Text).data = data;
                     continue;
                 }
             }
@@ -286,12 +286,12 @@ const removeEmptyInlines = (node: Node): void => {
     let l = children.length;
     while (l--) {
         const child = children[l];
-        if (child instanceof Element && !isLeaf(child)) {
+        if (isElement(child) && !isLeaf(child)) {
             removeEmptyInlines(child);
-            if (isInline(child) && !child.firstChild) {
+            if (!child.firstChild && isInline(child)) {
                 node.removeChild(child);
             }
-        } else if (child instanceof Text && !child.data) {
+        } else if (!(child as Text).data && isTextNode(child)) {
             node.removeChild(child);
         }
     }

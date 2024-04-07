@@ -26,13 +26,9 @@ const areAlike = (
     !isLeaf(node) && (
         node.nodeType === node2.nodeType &&
         node.nodeName === node2.nodeName &&
-        (
-            !(node instanceof HTMLElement && node2 instanceof HTMLElement)
-            || (node.nodeName !== "A" &&
-                node.className === node2.className &&
-                node.style?.cssText === node2.style?.cssText
-            )
-        )
+        node.nodeName !== "A" &&
+        (node as HTMLElement).className === (node2 as HTMLElement).className &&
+        (node as HTMLElement).style?.cssText === (node2 as HTMLElement).style?.cssText
     );
 
 const hasTagAttributes = (
@@ -110,8 +106,8 @@ const getClosest = (node: any, root: Element, selector: string) => {
     node = node?.closest(selector);
     return (node && root.contains(node)) ? node : null;
 };
-const isElement = (node: Node | null) => node instanceof Element;
-const isTextNode = (node: Node | null) => node instanceof Text;
+const isElement = (node: Node | null | undefined) => node instanceof Element;
+const isTextNode = (node: Node | null | undefined) => node instanceof Text;
 //  isBrElement = (node: Node) => node instanceof HTMLBRElement;
 const isBrElement = (node: Node | null) => "BR" === node?.nodeName;
 const setAttributes = (node: HTMLElement, props: any) => {

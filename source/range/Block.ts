@@ -1,6 +1,6 @@
 import { isInline, isBlock } from '../node/Category';
 import { getPreviousBlock, getNextBlock } from '../node/Block';
-import { getNodeBeforeOffset, getNodeAfterOffset } from '../node/Node';
+import { getNodeBeforeOffset, getNodeAfterOffset, isTextNode } from '../node/Node';
 import { ZWS, notWS, indexOf } from '../Constants';
 import { isNodeContainedInRange } from './Boundaries';
 import { TreeIterator, SHOW_ELEMENT_OR_TEXT } from '../node/TreeIterator';
@@ -81,23 +81,20 @@ const rangeDoesStartAtBlockBoundary = (
     let nodeAfterCursor: Node | null;
 
     // If in the middle or end of a text node, we're not at the boundary.
-    if (startContainer instanceof Text) {
-        const text = startContainer.data;
-        for (let i = startOffset; i > 0; --i) {
-            if (text.charAt(i - 1) !== ZWS) {
+    if (isTextNode(startContainer)) {
+        let i = startOffset;
+        while (i--) {
+            if ((startContainer as Text).data.charAt(i) !== ZWS) {
                 return false;
             }
         }
         nodeAfterCursor = startContainer;
     } else {
         nodeAfterCursor = getNodeAfterOffset(startContainer, startOffset);
-        if (nodeAfterCursor && !root.contains(nodeAfterCursor)) {
-            nodeAfterCursor = null;
-        }
-        // The cursor was right at the end of the document
-        if (!nodeAfterCursor) {
+        if (!nodeAfterCursor || !root.contains(nodeAfterCursor)) {
+            // The cursor was right at the end of the document
             nodeAfterCursor = getNodeBeforeOffset(startContainer, startOffset);
-            if (nodeAfterCursor instanceof Text && nodeAfterCursor.length) {
+            if (isTextNode(nodeAfterCursor) && (nodeAfterCursor as Text).length) {
                 return false;
             }
         }
@@ -125,8 +122,8 @@ const rangeDoesEndAtBlockBoundary = (range: Range, root: Element): boolean => {
 
     // If in a text node with content, and not at the end, we're not
     // at the boundary. Ignore ZWS.
-    if (endContainer instanceof Text) {
-        const text = endContainer.data;
+    if (isTextNode(endContainer)) {
+        const text = (endContainer as Text).data;
         const length = text.length;
         for (let i = endOffset; i < length; ++i) {
             if (text.charAt(i) !== ZWS) {

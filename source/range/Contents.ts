@@ -1,7 +1,7 @@
 import { SHOW_ELEMENT_OR_TEXT, TreeIterator } from '../node/TreeIterator';
 import { isNodeContainedInRange } from './Boundaries';
 import { isInline } from '../node/Category';
-import { isElement, isTextNode } from '../node/Node';
+import { isElement, isBrElement, isTextNode } from '../node/Node';
 
 // ---
 
@@ -14,9 +14,7 @@ const getTextContentsOfRange = (range: Range) => {
     const walker = new TreeIterator<Element | Text>(
         range.commonAncestorContainer,
         SHOW_ELEMENT_OR_TEXT,
-        (node) => {
-            return isNodeContainedInRange(range, node, true);
-        },
+        (node) => isNodeContainedInRange(range, node, true),
     );
     walker.currentNode = startContainer;
 
@@ -46,7 +44,7 @@ const getTextContentsOfRange = (range: Range) => {
                 addedTextInBlock = true;
             }
         } else if (
-            node.nodeName === 'BR' ||
+            isBrElement(node) ||
             (addedTextInBlock && !isInline(node))
         ) {
             textContent += '\n';

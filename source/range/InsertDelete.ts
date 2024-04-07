@@ -105,9 +105,7 @@ const extractContentsOfRange = (
         return frag;
     }
 
-    if (!common) {
-        common = range.commonAncestorContainer;
-    }
+    common = common || range.commonAncestorContainer;
     if (isTextNode(common)) {
         common = common.parentNode!;
     }
@@ -220,7 +218,7 @@ const deleteContentsOfRange = (
     // Find the character after cursor point
     let afterNode: Node | null = startContainer;
     let afterOffset = startOffset;
-    if (!(afterNode instanceof Text) || afterOffset === afterNode.data.length) {
+    if (!(isTextNode(afterNode)) || afterOffset === (afterNode as Text).data.length) {
         afterNode = getAdjacentInlineNode(iterator, 'nextNode', afterNode);
         afterOffset = 0;
     }
@@ -228,17 +226,17 @@ const deleteContentsOfRange = (
     // Find the character before cursor point
     let beforeNode: Node | null = startContainer;
     let beforeOffset = startOffset - 1;
-    if (!(beforeNode instanceof Text) || beforeOffset === -1) {
+    if (!isTextNode(beforeNode) || beforeOffset === -1) {
         beforeNode = getAdjacentInlineNode(
             iterator,
             'previousPONode',
             afterNode ||
-                (startContainer instanceof Text
+                (isTextNode(startContainer)
                     ? startContainer
                     : startContainer.childNodes[startOffset] || startContainer),
         );
-        if (beforeNode instanceof Text) {
-            beforeOffset = beforeNode.data.length;
+        if (isTextNode(beforeNode)) {
+            beforeOffset = (beforeNode as Text).data.length;
         }
     }
 
@@ -247,30 +245,30 @@ const deleteContentsOfRange = (
     let node = null;
     let offset = 0;
     if (
-        afterNode instanceof Text &&
-        afterNode.data.charAt(afterOffset) === ' ' &&
+        isTextNode(afterNode) &&
+        (afterNode as Text).data.charAt(afterOffset) === ' ' &&
         rangeDoesStartAtBlockBoundary(range, root)
     ) {
         node = afterNode;
         offset = afterOffset;
     } else if (
-        beforeNode instanceof Text &&
-        beforeNode.data.charAt(beforeOffset) === ' '
+        isTextNode(beforeNode) &&
+        (beforeNode as Text).data.charAt(beforeOffset) === ' '
     ) {
         // If character before cursor point is a space, replace with nbsp
         // if either:
         // a) There is a space after it; or
         // b) The point after is the end of the block
         if (
-            (afterNode instanceof Text &&
-                afterNode.data.charAt(afterOffset) === ' ') ||
+            (isTextNode(afterNode) &&
+                (afterNode as Text).data.charAt(afterOffset) === ' ') ||
             rangeDoesEndAtBlockBoundary(range, root)
         ) {
             node = beforeNode;
             offset = beforeOffset;
         }
     }
-    node && node.replaceData(offset, 1, ' '); // nbsp
+    node && (node as Text).replaceData(offset, 1, ' '); // nbsp
     // Range needs to be put back in place
     range.setStart(startContainer, startOffset);
     range.collapse(true);
@@ -398,8 +396,8 @@ const insertTreeFragmentIntoRange = (
         if (nodeAfterSplit && isContainer(nodeAfterSplit)) {
             mergeContainers(nodeAfterSplit, root);
         }
-        nodeAfterSplit = nodeBeforeSplit && nodeBeforeSplit.nextSibling;
-        if (nodeAfterSplit && isContainer(nodeAfterSplit)) {
+        nodeAfterSplit = nodeBeforeSplit?.nextSibling as Node;
+        if (isContainer(nodeAfterSplit)) {
             mergeContainers(nodeAfterSplit, root);
         }
         range.setEnd(container, offset);

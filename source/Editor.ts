@@ -131,7 +131,7 @@ class Squire {
 
     _mutation: MutationObserver;
 
-	[key: string]: any;
+    [key: string]: any;
 
     constructor(root: HTMLElement, config?: Partial<SquireConfig>) {
         this._root = root;
@@ -1457,11 +1457,7 @@ class Squire {
         // formatted text.
         let fixer: Node | Text | null | undefined;
         if (range.collapsed) {
-            if (cantFocusEmptyTextNodes) {
-                fixer = document.createTextNode(ZWS);
-            } else {
-                fixer = document.createTextNode('');
-            }
+            fixer = document.createTextNode(cantFocusEmptyTextNodes ? ZWS : '');
             insertNodeInRange(range, fixer!);
         }
 
@@ -2616,7 +2612,7 @@ class Squire {
         return getClosest(this.getSelection().commonAncestorContainer, this._root, selector);
     }
 
-    setAttribute(name: string, value: string | null) {
+    setAttribute(name: string, value?: string | null | object) {
         let range = this.getSelection();
         let start = range?.startContainer || {};
         let end = (range?.endContainer || {}) as Text;
@@ -2641,13 +2637,13 @@ class Squire {
         else {
             this.changeFormat({
                 tag: "SPAN",
-                attributes: {[name]: value}
+                attributes: {[name]: value as string}
             }, null, range);
         }
         return this.focus();
     }
 
-    setStyle(style: string | null) {
+    setStyle(style?: string | null | object) {
         this.setAttribute("style", style);
     }
 

@@ -57,13 +57,13 @@ const fixContainer = (
     container: Node,
     root: Element | DocumentFragment,
 ): Node => {
-    let wrapper: HTMLElement | null = null;
+    let wrapper: HTMLElement | null | undefined;
     // Not live, and fast
     [...container.childNodes].forEach((child) => {
         const isBR = isBrElement(child);
-//      if (!isBR && child.parentNode == root && isInline(child)
+        if (!isBR && child.parentNode == root && isInline(child)) {
 ////       && (blockTag !== "DIV" || (child.matches && !child.matches(phrasingElements)))
-        if (!isBR && isInline(child)) {
+//        if (!isBR && isInline(child)) {
             wrapper = wrapper || createElement('DIV');
             wrapper.append(child);
         } else if (isBR || wrapper) {
@@ -191,16 +191,16 @@ const _mergeInlines = (
     }
 };
 
-const mergeInlines = (node: Node, range: Range): void => {
-    const element = isTextNode(node) ? node.parentNode : node;
-    if (isElement(element)) {
+const mergeInlines = (node: Node | null | undefined, range: Range): void => {
+    node = isTextNode(node) ? node?.parentNode : node;
+    if (isElement(node)) {
         const fakeRange = {
             startContainer: range.startContainer,
             startOffset: range.startOffset,
             endContainer: range.endContainer,
             endOffset: range.endOffset,
         };
-        _mergeInlines((element as Element), fakeRange);
+        _mergeInlines((node as Element), fakeRange);
         range.setStart(fakeRange.startContainer, fakeRange.startOffset);
         range.setEnd(fakeRange.endContainer, fakeRange.endOffset);
     }

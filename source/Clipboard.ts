@@ -137,12 +137,6 @@ const _onCopy = function (this: Squire, event: ClipboardEvent): void {
     );
 };
 
-// Need to monitor for shift key like this, as event.shiftKey is not available
-// in paste event.
-const _monitorShiftKey = function (this: Squire, event: KeyboardEvent): void {
-    this._isShiftDown = event.shiftKey;
-};
-
 const _onPaste = function (this: Squire, event: ClipboardEvent): void {
     const clipboardData = event.clipboardData;
     const items = clipboardData?.items;
@@ -351,7 +345,6 @@ export {
     extractRangeToClipboard,
     _onCut,
     _onCopy,
-    _monitorShiftKey,
     _onPaste,
     _onDrop,
 };

@@ -40,7 +40,6 @@ const removeZWS = (root: Node, keepNode?: Node | null): void => {
     while ((textNode = walker.nextNode())) {
         while (
             (index = textNode.data.indexOf(ZWS)) > -1 &&
-            // eslint-disable-next-line no-unmodified-loop-condition
             (!keepNode || textNode.parentNode !== keepNode)
         ) {
             if (textNode.length === 1) {

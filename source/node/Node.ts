@@ -110,18 +110,17 @@ const isElement = (node: Node | null | undefined) => node instanceof Element;
 const isTextNode = (node: Node | null | undefined) => node instanceof Text;
 //  isBrElement = (node: Node) => node instanceof HTMLBRElement;
 const isBrElement = (node: Node | null) => "BR" === node?.nodeName;
-const setAttributes = (node: HTMLElement, props: any) => {
+const setAttributes = (node: HTMLElement, props: Object | null | undefined) => {
     props && Object.entries(props).forEach(([k,v]) => {
         if (null == v) {
             node.removeAttribute(k);
         } else if ("style" === k && typeof v === "object") {
-            Object.entries(v).forEach(([k,v]) => node.style[k as any] = v);
+            Object.entries(v).forEach(([k,v]) => (node.style as any)[k] = v);
         } else {
-            node.setAttribute(k, v as string);
+            node.setAttribute(k, v);
         }
     });
 };
-
 
 // --- Export
 

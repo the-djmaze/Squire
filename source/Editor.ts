@@ -14,6 +14,7 @@ import {
     isElement,
     isTextNode,
     isBrElement,
+    setAttributes,
 } from './node/Node';
 import {
     isLeaf,
@@ -45,7 +46,7 @@ import {
 } from './node/MergeSplit';
 import { getBlockWalker, getNextBlock, isEmptyBlock } from './node/Block';
 import { cleanTree, cleanupBRs, escapeHTML, removeEmptyInlines } from './Clean';
-import { cantFocusEmptyTextNodes, ZWS, indexOf } from './Constants';
+import { cantFocusEmptyTextNodes, ZWS, indexOf, isAndroid } from './Constants';
 import {
     expandRangeToBlockBoundaries,
     getEndBlockOfRange,
@@ -54,7 +55,6 @@ import {
     rangeDoesStartAtBlockBoundary,
 } from './range/Block';
 import {
-    _monitorShiftKey,
     _onCopy,
     _onCut,
     _onDrop,
@@ -64,25 +64,93 @@ import { keyHandlers, _onKey } from './keyboard/KeyHandlers';
 import { linkifyText } from './keyboard/KeyHelpers';
 import { getTextContentsOfRange } from './range/Contents';
 
-// SnappyMail
-const
-    setAttributes = (node: HTMLElement, props: Object) => {
-        props && Object.entries(props).forEach(([k,v]) => {
-            if (null == v) {
-                node.removeAttribute(k);
-            } else if ("style" === k && typeof v === "object") {
-                Object.entries(v).forEach(([k,v]) => (node.style as any)[k] = v);
-            } else {
-                node.setAttribute(k, v);
-            }
-        });
-    };
+/**
+ * Subscribing to these events won't automatically add a listener to the
+ * document node, since these events are fired in a custom manner by the
+ * editor code.
+ */
+const customEvents = new Set([
+    'pathChange',
+    'select',
+    'input',
+    'pasteImage',
+    'undoStateChange',
+]);
+const startSelectionId = 'squire-selection-start';
+const endSelectionId = 'squire-selection-end';
+const tagAfterSplit: Record<string, string> = {
+    DT: 'DD',
+    DD: 'DT',
+    LI: 'LI',
+    PRE: 'PRE',
+};
+    /*
+    linkRegExp = new RegExp(
+        // Only look on boundaries
+        '\\b(?:' +
+        // Capture group 1: URLs
+        '(' +
+            // Add links to URLS
+            // Starts with:
+            '(?:' +
+                // http(s):// or ftp://
+                '(?:ht|f)tps?:\\/\\/' +
+                // or
+                '|' +
+                // www.
+                'www\\d{0,3}[.]' +
+                // or
+                '|' +
+                // foo90.com/
+                '[a-z0-9][a-z0-9.\\-]*[.][a-z]{2,}\\/' +
+            ')' +
+            // Then we get one or more:
+            '(?:' +
+                // Run of non-spaces, non ()<>
+                '[^\\s()<>]+' +
+                // or
+                '|' +
+                // balanced parentheses (one level deep only)
+                '\\([^\\s()<>]+\\)' +
+            ')+' +
+            // And we finish with
+            '(?:' +
+                // Not a space or punctuation character
+                '[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]' +
+                // or
+                '|' +
+                // Balanced parentheses.
+                '\\([^\\s()<>]+\\)' +
+            ')' +
+        // Capture group 2: Emails
+        ')|(' +
+            // Add links to emails
+            '[\\w\\-.%+]+@(?:[\\w\\-]+\\.)+[a-z]{2,}\\b' +
+            // Allow query parameters in the mailto: style
+            '(?:' +
+                '[?][^&?\\s]+=[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]+' +
+                '(?:&[^&?\\s]+=[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]+)*' +
+            ')?' +
+        '))',
+        'i'
+    );
+    */
+const linkRegExp =
+    /\b(?:((https?:\/\/)?(?:www\d{0,3}\.|[a-z0-9][a-z0-9.-]*\.[a-z]{2,}\/)(?:[^\s()<>]+|\([^\s()<>]+\))+(?:[^\s?&`!()[\]{};:'".,<>«»“”‘’]|\([^\s()<>]+\)))|([\w\-.%+]+@(?:[\w-]+\.)+[a-z]{2,}\b(?:\?[^&?\s]+=[^\s?&`!()[\]{};:'".,<>«»“”‘’]+(?:&[^&?\s]+=[^\s?&`!()[\]{};:'".,<>«»“”‘’]+)*)?))/i;
+
+import { Backspace } from './keyboard/Backspace';
+import { Delete } from './keyboard/Delete';
 
 declare const DOMPurify: any;
 
 // ---
 
-type EventHandler = { handleEvent: (e: Event) => void } | ((e: Event) => void);
+type EventHandlerObj = { handleEvent: (e: Event) => void };
+type EventHandlerFn = ((e: Event) => void);
+
+type EventHandler = EventHandlerObj | EventHandlerFn;
+
+type InputEventHandler = ((e: InputEvent) => void);
 
 type KeyHandlerFunction = (x: Squire, y: KeyboardEvent, z: Range) => void;
 
@@ -105,6 +173,7 @@ interface SquireConfig {
 // ---
 
 class Squire {
+/*
     _root: HTMLElement;
     _config: SquireConfig;
 
@@ -116,9 +185,9 @@ class Squire {
     _lastAnchorNode: Node | null;
     _lastFocusNode: Node | null;
     _path: string;
-
+*/
     _events: Map<string, Array<EventHandler>>;
-
+/*
     _undoIndex: number;
     _undoStack: Array<string>;
     _undoStackLength: number;
@@ -127,9 +196,12 @@ class Squire {
     _ignoreAllChanges: boolean;
 
     _isShiftDown: boolean;
+*/
     _keyHandlers: Record<string, KeyHandlerFunction>;
 
     _mutation: MutationObserver;
+
+    _beforeInputTypes: Record<string, InputEventHandler>;
 
     [key: string]: any;
 
@@ -156,40 +228,38 @@ class Squire {
         this._ignoreChange = false;
         this._ignoreAllChanges = false;
 
-        // Add event listeners
-        this.addEventListener('selectionchange', this._updatePathOnEvent);
-
-        // On blur, restore focus except if the user taps or clicks to focus a
-        // specific point. Can't actually use click event because focus happens
-        // before click, so use mousedown/touchstart
-        this.addEventListener('blur', () => this._willRestoreSelection = true);
-        this.addEventListener('pointerdown mousedown touchstart', () => this._willRestoreSelection = false)
-        this.addEventListener('focus', () => this._willRestoreSelection && this.setSelection(this._lastSelection))
-
-        // Clipboard support
         this._isShiftDown = false;
-        this.addEventListener('cut', _onCut as (e: Event) => void);
-        this.addEventListener('copy', _onCopy as (e: Event) => void);
-        this.addEventListener('paste', _onPaste as (e: Event) => void);
-        this.addEventListener('drop', _onDrop as (e: Event) => void);
-        this.addEventListener(
-            'keydown',
-            _monitorShiftKey as (e: Event) => void,
-        );
-        this.addEventListener('keyup', _monitorShiftKey as (e: Event) => void);
 
-        // Keyboard support
-        this.addEventListener('keydown', _onKey as (e: Event) => void);
+        // Add event listeners
+        this.addEventListener('selectionchange', this._updatePathOnEvent)
+
+            // On blur, restore focus except if the user taps or clicks to focus a
+            // specific point. Can't actually use click event because focus happens
+            // before click, so use mousedown/touchstart
+            .addEventListener('blur', () => this._willRestoreSelection = true)
+            .addEventListener('pointerdown mousedown touchstart', () => this._willRestoreSelection = false)
+            .addEventListener('focus', () => this._willRestoreSelection && this.setSelection(this._lastSelection))
+
+            // Clipboard support
+            .addEventListener('cut', _onCut as (e: Event) => void)
+            .addEventListener('copy', _onCopy as (e: Event) => void)
+            .addEventListener('paste', _onPaste as (e: Event) => void)
+            .addEventListener('drop', _onDrop as (e: Event) => void)
+            // Need to monitor for shift key like this, as event.shiftKey is not available
+            // in paste event.
+            .addEventListener("keydown keyup", (event: Event) => this.isShiftDown = (event as KeyboardEvent).shiftKey)
+            // Keyboard support
+            .addEventListener('keydown', _onKey as (e: Event) => void)
+            .addEventListener("pointerup keyup mouseup touchend", () => this.getSelection());
         this._keyHandlers = Object.create(keyHandlers);
 
-        const mutation = new MutationObserver(() => this._docWasChanged());
-        mutation.observe(root, {
+        this._mutation = new MutationObserver(() => this._docWasChanged());
+        this._mutation.observe(root, {
             childList: true,
             attributes: true,
             characterData: true,
             subtree: true,
         });
-        this._mutation = mutation;
 
         // Make it editable
         root.setAttribute('contenteditable', 'true');
@@ -202,6 +272,76 @@ class Squire {
         );
 
         this.setHTML('');
+
+        this._beforeInputTypes = {
+            insertText: event => {
+                if (isAndroid && event.data && event.data.includes("\n")) {
+                    event.preventDefault();
+                }
+            },
+            insertLineBreak: event => {
+                event.preventDefault();
+                this.splitBlock(true);
+            },
+            insertParagraph: event => {
+                event.preventDefault();
+                this.splitBlock(false);
+            },
+            insertOrderedList: event => {
+                event.preventDefault();
+                this.makeOrderedList();
+            },
+            insertUnoderedList: event => {
+                event.preventDefault();
+                this.makeUnorderedList();
+            },
+            historyUndo: event => {
+                event.preventDefault();
+                this.undo();
+            },
+            historyRedo: event => {
+                event.preventDefault();
+            },
+            formatRemove: event => {
+                event.preventDefault();
+                this.setStyle();
+            },
+            formatSetBlockTextDirection: event => {
+                event.preventDefault();
+                let dir = event.data;
+                this.setTextDirection(dir === "null" ? null : dir);
+            },
+            formatBackColor: event => {
+                event.preventDefault();
+                this.setStyle({backgroundColor:event.data});
+            },
+            formatFontColor: event => {
+                event.preventDefault();
+                this.setStyle({color:event.data});
+            },
+            formatFontName: event => {
+                event.preventDefault();
+                this.setStyle({fontFamily:event.data});
+            },
+/*
+            formatIndent: event => {
+                event.preventDefault();
+                this.changeIndentationLevel("increase");
+            },
+            formatOutdent: event => {
+                event.preventDefault();
+                this.changeIndentationLevel("decrease");
+            },
+                this.saveUndoState();
+            },
+*/
+            deleteContentBackward: event => {
+                Backspace(this, event, this.getSelection());
+            },
+            deleteContentForward: event => {
+                Delete(this, event, this.getSelection());
+            }
+        }
     }
 
     destroy(): void {
@@ -256,92 +396,28 @@ class Squire {
     }
 
     _beforeInput(event: InputEvent): void {
-        switch (event.inputType) {
-            case 'insertLineBreak':
+        let type = event.inputType;
+        switch (type) {
+            case "formatBold":
+            case "formatItalic":
+            case "formatUnderline":
+            case "formatStrikeThrough":
+            case "formatSuperscript":
+            case "formatSubscript":
                 event.preventDefault();
-                this.splitBlock(true);
+                this[type.slice(6).toLowerCase() as string]();
                 break;
-            case 'insertParagraph':
+            case "formatJustifyFull":
+            case "formatJustifyCenter":
+            case "formatJustifyRight":
+            case "formatJustifyLeft": {
                 event.preventDefault();
-                this.splitBlock(false);
-                break;
-            case 'insertOrderedList':
-                event.preventDefault();
-                this.makeOrderedList();
-                break;
-            case 'insertUnoderedList':
-                event.preventDefault();
-                this.makeUnorderedList();
-                break;
-            case 'historyUndo':
-                event.preventDefault();
-                this.undo();
-                break;
-            case 'historyRedo':
-                event.preventDefault();
-                this.redo();
-                break;
-            case 'formatBold':
-                event.preventDefault();
-                this.bold();
-                break;
-            case 'formaItalic':
-                event.preventDefault();
-                this.italic();
-                break;
-            case 'formatUnderline':
-                event.preventDefault();
-                this.underline();
-                break;
-            case 'formatStrikeThrough':
-                event.preventDefault();
-                this.strikethrough();
-                break;
-            case 'formatSuperscript':
-                event.preventDefault();
-                this.superscript();
-                break;
-            case 'formatSubscript':
-                event.preventDefault();
-                this.subscript();
-                break;
-            case 'formatJustifyFull':
-            case 'formatJustifyCenter':
-            case 'formatJustifyRight':
-            case 'formatJustifyLeft': {
-                event.preventDefault();
-                let alignment = event.inputType.slice(13).toLowerCase();
-                if (alignment === 'full') {
-                    alignment = 'justify';
-                }
-                this.setTextAlignment(alignment);
+                let alignment = type.slice(13).toLowerCase();
+                this.setStyle({textAlign:alignment === "full" ? "justify" : alignment});
                 break;
             }
-            case 'formatRemove':
-                event.preventDefault();
-                this.removeAllFormatting();
-                break;
-            case 'formatSetBlockTextDirection': {
-                event.preventDefault();
-                let dir = event.data;
-                if (dir === 'null') {
-                    dir = null;
-                }
-                this.setTextDirection(dir);
-                break;
-            }
-            case 'formatBackColor':
-                event.preventDefault();
-                this.setHighlightColor(event.data);
-                break;
-            case 'formatFontColor':
-                event.preventDefault();
-                this.setTextColor(event.data);
-                break;
-            case 'formatFontName':
-                event.preventDefault();
-                this.setFontFace(event.data);
-                break;
+            default:
+                this._beforeInputTypes[type]?.(event);
         }
     }
 
@@ -373,6 +449,7 @@ class Squire {
             }
         }
         if (handlers) {
+//            const event = detail instanceof Event ? detail : {type, detail} as CustomEvent;
             const event: Event =
                 detail instanceof Event
                     ? detail
@@ -384,11 +461,7 @@ class Squire {
             handlers = handlers.slice();
             for (const handler of handlers) {
                 try {
-                    if ('handleEvent' in handler) {
-                        handler.handleEvent(event);
-                    } else {
-                        handler.call(this, event);
-                    }
+                    (handler as EventHandlerObj).handleEvent ? (handler as EventHandlerObj).handleEvent(event) : (handler as EventHandlerFn).call(this, event);
                 } catch (error) {
                     this._config.didError(error);
                 }
@@ -397,39 +470,23 @@ class Squire {
         return this;
     }
 
-    /**
-     * Subscribing to these events won't automatically add a listener to the
-     * document node, since these events are fired in a custom manner by the
-     * editor code.
-     */
-    customEvents = new Set([
-        'pathChange',
-        'select',
-        'input',
-        'pasteImage',
-        'undoStateChange',
-    ]);
-
-    addEventListener(type: string, fn: EventHandler): Squire {
-        let handlers = this._events.get(type);
-        let target: Document | HTMLElement = this._root;
-        if (!handlers) {
-            handlers = [];
-            this._events.set(type, handlers);
-            if (!this.customEvents.has(type)) {
-                if (type === 'selectionchange') {
-                    target = document;
-                }
-                target.addEventListener(type, this, true);
+    addEventListener(types: string, fn: EventHandler): Squire {
+        types.split(/\s+/).forEach(type=>{
+            let handlers = this._events.get(type);
+            let target: Document | HTMLElement = this._root;
+            if (!handlers) {
+                handlers = [];
+                this._events.set(type, handlers);
+                customEvents.has(type)
+                || (type === 'selectionchange' ? document : target).addEventListener(type, this, {capture:true,passive:"touchstart"===type});
             }
-        }
-        handlers.push(fn);
+            handlers.push(fn);
+        });
         return this;
     }
 
     removeEventListener(type: string, fn?: EventHandler): Squire {
         const handlers = this._events.get(type);
-        let target: Document | HTMLElement = this._root;
         if (handlers) {
             if (fn) {
                 let l = handlers.length;
@@ -443,12 +500,8 @@ class Squire {
             }
             if (!handlers.length) {
                 this._events.delete(type);
-                if (!this.customEvents.has(type)) {
-                    if (type === 'selectionchange') {
-                        target = document;
-                    }
-                    target.removeEventListener(type, this, true);
-                }
+                customEvents.has(type)
+                || (type === 'selectionchange' ? document : this._root).removeEventListener(type, this, true);
             }
         }
         return this;
@@ -477,16 +530,13 @@ class Squire {
 
     // ---
 
-    startSelectionId = 'squire-selection-start';
-    endSelectionId = 'squire-selection-end';
-
     _saveRangeToBookmark(range: Range): void {
         let startNode = createElement('INPUT', {
-            id: this.startSelectionId,
+            id: startSelectionId,
             type: 'hidden',
         });
         let endNode = createElement('INPUT', {
-            id: this.endSelectionId,
+            id: endSelectionId,
             type: 'hidden',
         });
         let temp: HTMLElement;
@@ -500,8 +550,8 @@ class Squire {
             startNode.compareDocumentPosition(endNode) &
             Node.DOCUMENT_POSITION_PRECEDING
         ) {
-            startNode.id = this.endSelectionId;
-            endNode.id = this.startSelectionId;
+            startNode.id = endSelectionId;
+            endNode.id = startSelectionId;
             temp = startNode;
             startNode = endNode;
             endNode = temp;
@@ -513,8 +563,8 @@ class Squire {
 
     _getRangeAndRemoveBookmark(range?: Range): Range | null {
         const root = this._root;
-        const start = root.querySelector('#' + this.startSelectionId);
-        const end = root.querySelector('#' + this.endSelectionId);
+        const start = root.querySelector('#' + startSelectionId);
+        const end = root.querySelector('#' + endSelectionId);
 
         if (start && end) {
             let startContainer: Node = start.parentNode!;
@@ -583,7 +633,7 @@ class Squire {
             range = this._lastSelection;
             // Check the editor is in the live document; if not, the range has
             // probably been rewritten by the browser and is bogus
-            if (!document.contains(range.commonAncestorContainer)) {
+            if (range && !document.contains(range.commonAncestorContainer)) {
                 range = null;
             }
         }
@@ -878,6 +928,19 @@ class Squire {
 
     // --- Get and set data
 
+    _fixCursor(root: DocumentFragment | HTMLElement): void {
+        let node: DocumentFragment | HTMLElement | null = root;
+        let child = root.firstChild;
+        if (!child || isBrElement(child)) {
+            const block = this.createDefaultBlock();
+            child ? child.replaceWith(block) : (node as Element).append(block);
+        } else {
+            while ((node = getNextBlock(node as Node, root))) {
+                fixCursor(node);
+            }
+        }
+    }
+
     getRoot(): HTMLElement {
         return this._root;
     }
@@ -886,28 +949,13 @@ class Squire {
         return this._root.innerHTML;
     }
 
-    _setRawHTML(html: string): Squire {
+    _setRawHTML(html: string): void {
         const root = this._root;
         root.innerHTML = html;
 
-        let node: Element | null = root;
-        const child = node.firstChild;
-        if (!child || isBrElement(child)) {
-            const block = this.createDefaultBlock();
-            if (child) {
-                node.replaceChild(block, child);
-            } else {
-                node.append(block);
-            }
-        } else {
-            while ((node = getNextBlock(node, root))) {
-                fixCursor(node);
-            }
-        }
+        this._fixCursor(root);
 
         this._ignoreChange = true;
-
-        return this;
     }
 
     getHTML(withBookmark?: boolean): string {
@@ -932,29 +980,18 @@ class Squire {
         fixContainer(frag, root);
 
         // Fix cursor
-        let node: DocumentFragment | HTMLElement | null = frag;
-        let child = node.firstChild;
-        if (!child || isBrElement(child)) {
-            const block = this.createDefaultBlock();
-            if (child) {
-                node.replaceChild(block, child);
-            } else {
-                node.append(block);
-            }
-        } else {
-            while ((node = getNextBlock(node, root))) {
-                fixCursor(node);
-            }
-        }
+        this._fixCursor(frag);
 
         // Don't fire an input event
         this._ignoreChange = true;
 
         // Remove existing root children and insert new content
-        while ((child = root.lastChild)) {
-            root.removeChild(child);
+        if (root.replaceChildren) {
+            root.replaceChildren(frag);
+        } else {
+            while (root.lastChild) detach(root.lastChild);
+            root.append(frag);
         }
-        root.append(frag);
 
         // Reset the undo stack
         this._undoIndex = -1;
@@ -1001,7 +1038,7 @@ class Squire {
             frag.normalize();
 
             let node: HTMLElement | DocumentFragment | null = frag;
-            while ((node = getNextBlock(node, frag))) {
+            while ((node = getNextBlock(node as Node, frag))) {
                 fixCursor(node);
             }
 
@@ -1280,9 +1317,7 @@ class Squire {
 
         // Otherwise, check each text node at least partially contained within
         // the selection and make sure all of them have the format we want.
-        const walker = new TreeIterator<Text>(common, SHOW_TEXT, (node) => {
-            return isNodeContainedInRange(range!, node, true);
-        });
+        const walker = new TreeIterator<Text>(common, SHOW_TEXT, (node) => isNodeContainedInRange(range!, node, true));
 
         let seenNode = false;
         let node: Node | null;
@@ -1457,7 +1492,11 @@ class Squire {
         // formatted text.
         let fixer: Node | Text | null | undefined;
         if (range.collapsed) {
-            fixer = document.createTextNode(cantFocusEmptyTextNodes ? ZWS : '');
+            if (cantFocusEmptyTextNodes) {
+                fixer = document.createTextNode(ZWS);
+            } else {
+                fixer = document.createTextNode('');
+            }
             insertNodeInRange(range, fixer!);
         }
 
@@ -1616,60 +1655,6 @@ class Squire {
         );
     }
 
-    /*
-    linkRegExp = new RegExp(
-        // Only look on boundaries
-        '\\b(?:' +
-        // Capture group 1: URLs
-        '(' +
-            // Add links to URLS
-            // Starts with:
-            '(?:' +
-                // http(s):// or ftp://
-                '(?:ht|f)tps?:\\/\\/' +
-                // or
-                '|' +
-                // www.
-                'www\\d{0,3}[.]' +
-                // or
-                '|' +
-                // foo90.com/
-                '[a-z0-9][a-z0-9.\\-]*[.][a-z]{2,}\\/' +
-            ')' +
-            // Then we get one or more:
-            '(?:' +
-                // Run of non-spaces, non ()<>
-                '[^\\s()<>]+' +
-                // or
-                '|' +
-                // balanced parentheses (one level deep only)
-                '\\([^\\s()<>]+\\)' +
-            ')+' +
-            // And we finish with
-            '(?:' +
-                // Not a space or punctuation character
-                '[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]' +
-                // or
-                '|' +
-                // Balanced parentheses.
-                '\\([^\\s()<>]+\\)' +
-            ')' +
-        // Capture group 2: Emails
-        ')|(' +
-            // Add links to emails
-            '[\\w\\-.%+]+@(?:[\\w\\-]+\\.)+[a-z]{2,}\\b' +
-            // Allow query parameters in the mailto: style
-            '(?:' +
-                '[?][^&?\\s]+=[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]+' +
-                '(?:&[^&?\\s]+=[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]+)*' +
-            ')?' +
-        '))',
-        'i'
-    );
-    */
-    linkRegExp =
-        /\b(?:((?:(?:ht|f)tps?:\/\/|www\d{0,3}[.]|[a-z0-9][a-z0-9.\-]*[.][a-z]{2,}\/)(?:[^\s()<>]+|\([^\s()<>]+\))+(?:[^\s?&`!()\[\]{};:'".,<>«»“”‘’]|\([^\s()<>]+\)))|([\w\-.%+]+@(?:[\w\-]+\.)+[a-z]{2,}\b(?:[?][^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+(?:&[^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+)*)?))/i;
-
     addDetectedLinks(
         searchInNode: DocumentFragment | Node,
         root?: DocumentFragment | HTMLElement,
@@ -1679,7 +1664,6 @@ class Squire {
             SHOW_TEXT,
             (node) => !getNearest(node, root || this._root, 'A'),
         );
-        const linkRegExp = this.linkRegExp;
         const defaultAttributes = this._config.tagAttributes.a;
         let node: Text | null;
         while ((node = walker.nextNode())) {
@@ -1804,13 +1788,6 @@ class Squire {
         ) as HTMLElement;
     }
 
-    tagAfterSplit: Record<string, string> = {
-        DT: 'DD',
-        DD: 'DT',
-        LI: 'LI',
-        PRE: 'PRE',
-    };
-
     splitBlock(lineBreakOnly: boolean, range?: Range): Squire {
         range = range || this.getSelection();
         const root = this._root;
@@ -1933,7 +1910,7 @@ class Squire {
         // Otherwise, split at cursor point.
         node = range.startContainer;
         const offset = range.startOffset;
-        let splitTag = this.tagAfterSplit[block.nodeName];
+        let splitTag = tagAfterSplit[block.nodeName];
         nodeAfterSplit = split(
             node,
             offset,
@@ -2354,11 +2331,11 @@ class Squire {
             (/* frag */) =>
                 this.createDefaultBlock([
                     createElement('INPUT', {
-                        id: this.startSelectionId,
+                        id: startSelectionId,
                         type: 'hidden',
                     }),
                     createElement('INPUT', {
-                        id: this.endSelectionId,
+                        id: endSelectionId,
                         type: 'hidden',
                     }),
                 ]),

@@ -1,4 +1,4 @@
-import { SHOW_ELEMENT_OR_TEXT, TreeIterator } from '../node/TreeIterator';
+import { SHOW_ELEMENT_OR_TEXT, createTreeWalker } from '../node/TreeIterator';
 import { isNodeContainedInRange } from './Boundaries';
 import { isInline } from '../node/Category';
 import { isElement, isBrElement, isTextNode } from '../node/Node';
@@ -11,10 +11,11 @@ const getTextContentsOfRange = (range: Range) => {
     }
     const startContainer = range.startContainer;
     const endContainer = range.endContainer;
-    const walker = new TreeIterator<Element | Text>(
+    const filter = (node: Node) => isNodeContainedInRange(range, node, true);
+    const walker = createTreeWalker(
         range.commonAncestorContainer,
         SHOW_ELEMENT_OR_TEXT,
-        (node) => isNodeContainedInRange(range, node, true),
+        filter,
     );
     walker.currentNode = startContainer;
 
@@ -25,7 +26,7 @@ const getTextContentsOfRange = (range: Range) => {
 
     if (
         (!isElement(node) && !isTextNode(node)) ||
-        !walker.filter(node as Element)
+        !filter(node)
     ) {
         node = walker.nextNode();
     }

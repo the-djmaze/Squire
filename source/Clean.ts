@@ -1,5 +1,5 @@
 import { notWS } from './Constants';
-import { TreeIterator, SHOW_ELEMENT_OR_TEXT } from './node/TreeIterator';
+import { createTreeWalker, SHOW_ELEMENT_OR_TEXT } from './node/TreeIterator';
 import { createElement, empty, detach, replaceWith, isElement, isTextNode } from './node/Node';
 import { isInline, isLeaf } from './node/Category';
 import { fixContainer } from './node/MergeSplit';
@@ -193,7 +193,7 @@ const cleanTree = (
     while (isInline(nonInlineParent)) {
         nonInlineParent = nonInlineParent.parentNode!;
     }
-    const walker = new TreeIterator<Element | Text>(
+    const walker = createTreeWalker(
         nonInlineParent,
         SHOW_ELEMENT_OR_TEXT,
     );

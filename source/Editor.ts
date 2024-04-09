@@ -1,5 +1,5 @@
 import {
-    TreeIterator,
+    createTreeWalker,
     SHOW_TEXT,
     SHOW_ELEMENT_OR_TEXT,
 } from './node/TreeIterator';
@@ -1317,7 +1317,7 @@ class Squire {
 
         // Otherwise, check each text node at least partially contained within
         // the selection and make sure all of them have the format we want.
-        const walker = new TreeIterator<Text>(common, SHOW_TEXT, (node) => isNodeContainedInRange(range!, node, true));
+        const walker = createTreeWalker(common, SHOW_TEXT, (node: Node) => isNodeContainedInRange(range!, node, true));
 
         let seenNode = false;
         let node: Node | null;
@@ -1405,17 +1405,15 @@ class Squire {
             //
             // IMG tags are included because we may want to create a link around
             // them, and adding other styles is harmless.
-            const walker = new TreeIterator<Element | Text>(
+            const filter = (node: Node) =>
+                (isTextNode(node) ||
+                    isBrElement(node) ||
+                    node.nodeName === 'IMG') &&
+                isNodeContainedInRange(range, node, true);
+            const walker = createTreeWalker(
                 range.commonAncestorContainer,
                 SHOW_ELEMENT_OR_TEXT,
-                (node: Node) => {
-                    return (
-                        (isTextNode(node) ||
-                            isBrElement(node) ||
-                            node.nodeName === 'IMG') &&
-                        isNodeContainedInRange(range, node, true)
-                    );
-                },
+                filter,
             );
 
             // Start at the beginning node of the range and iterate through
@@ -1428,7 +1426,7 @@ class Squire {
             if (
                 (!isElement(startContainer) &&
                     !isTextNode(startContainer)) ||
-                !walker.filter(startContainer as Element)
+                !filter(startContainer as Element)
             ) {
                 const next = walker.nextNode();
                 // If there are no interesting nodes in the selection, abort
@@ -1659,14 +1657,14 @@ class Squire {
         searchInNode: DocumentFragment | Node,
         root?: DocumentFragment | HTMLElement,
     ): Squire {
-        const walker = new TreeIterator<Text>(
+        const walker = createTreeWalker(
             searchInNode,
             SHOW_TEXT,
-            (node) => !getNearest(node, root || this._root, 'A'),
+            (node: Node) => !getNearest(node, root || this._root, 'A'),
         );
         const defaultAttributes = this._config.tagAttributes.a;
         let node: Text | null;
-        while ((node = walker.nextNode())) {
+        while ((node = walker.nextNode() as Text)) {
             const parent = node.parentNode!;
             let data = node.data;
             let match: RegExpExecArray | null;
@@ -2354,7 +2352,7 @@ class Squire {
                 const blockWalker = getBlockWalker(frag, root);
                 let node: Element | Text | null;
                 // 1. Extract inline content; drop all blocks and contains.
-                while ((node = blockWalker.nextNode())) {
+                while ((node = blockWalker.nextNode() as HTMLElement)) {
                     // 2. Replace <br> with \n in content
                     let nodes = node.querySelectorAll('BR');
                     const brBreaksLine: boolean[] = [];
@@ -2388,8 +2386,8 @@ class Squire {
                     output.append(empty(node));
                 }
                 // 4. Replace nbsp with regular sp
-                const textWalker = new TreeIterator<Text>(output, SHOW_TEXT);
-                while ((node = textWalker.nextNode())) {
+                const textWalker = createTreeWalker(output, SHOW_TEXT);
+                while ((node = textWalker.nextNode() as Text)) {
                     // eslint-disable-next-line no-irregular-whitespace
                     node.data = node.data.replace(/ /g, ' '); // nbsp -> sp
                 }
@@ -2425,9 +2423,9 @@ class Squire {
                 let l = pres.length;
                 while (l--) {
                     const pre = pres[l];
-                    const walker = new TreeIterator<Text>(pre, SHOW_TEXT);
+                    const walker = createTreeWalker(pre, SHOW_TEXT);
                     let node: Text | null;
-                    while ((node = walker.nextNode())) {
+                    while ((node = walker.nextNode() as Text)) {
                         let value = node.data;
                         value = value.replace(/ (?= )/g, ' '); // sp -> nbsp
                         const contents = document.createDocumentFragment();

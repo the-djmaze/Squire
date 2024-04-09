@@ -3,7 +3,7 @@ import { getPreviousBlock, getNextBlock } from '../node/Block';
 import { getNodeBeforeOffset, getNodeAfterOffset, isTextNode } from '../node/Node';
 import { ZWS, notWS, indexOf } from '../Constants';
 import { isNodeContainedInRange } from './Boundaries';
-import { TreeIterator, SHOW_ELEMENT_OR_TEXT } from '../node/TreeIterator';
+import { createTreeWalker, SHOW_ELEMENT_OR_TEXT } from '../node/TreeIterator';
 
 // ---
 
@@ -66,11 +66,10 @@ const getEndBlockOfRange = (
     return block && isNodeContainedInRange(range, block, true) ? block : null;
 };
 
-const isContent = (node: Element | Text): boolean => {
-    return node instanceof Text
-        ? notWS.test(node.data)
-        : node.nodeName === 'IMG';
-};
+const createContentWalker = (root: Node) =>
+    createTreeWalker(root, SHOW_ELEMENT_OR_TEXT,
+        (node: Text) => isTextNode(node) ? notWS.test(node.data) : node.nodeName === "IMG"
+    );
 
 const rangeDoesStartAtBlockBoundary = (
     range: Range,
@@ -105,11 +104,7 @@ const rangeDoesStartAtBlockBoundary = (
     if (!block) {
         return false;
     }
-    const contentWalker = new TreeIterator<Element | Text>(
-        block,
-        SHOW_ELEMENT_OR_TEXT,
-        isContent,
-    );
+    const contentWalker = createContentWalker(block);
     contentWalker.currentNode = nodeAfterCursor;
 
     return !contentWalker.previousNode();
@@ -140,11 +135,7 @@ const rangeDoesEndAtBlockBoundary = (range: Range, root: Element): boolean => {
     if (!block) {
         return false;
     }
-    const contentWalker = new TreeIterator<Element | Text>(
-        block,
-        SHOW_ELEMENT_OR_TEXT,
-        isContent,
-    );
+    const contentWalker = createContentWalker(block);
     contentWalker.currentNode = currentNode;
     return !contentWalker.nextNode();
 };

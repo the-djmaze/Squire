@@ -2,7 +2,7 @@ import { ZWS, indexOf } from '../Constants';
 import { getPreviousBlock } from '../node/Block';
 import { isInline, isBlock } from '../node/Category';
 import { fixCursor } from '../node/MergeSplit';
-import { createElement, detach, getNearest, isTextNode } from '../node/Node';
+import { createElement, detach, getNearest, isTextNode, isBrElement } from '../node/Node';
 import { moveRangeBoundariesDownTree } from '../range/Boundaries';
 
 import type { Squire } from '../Editor';
@@ -15,9 +15,7 @@ import type { Squire } from '../Editor';
 // you delete all text inside an inline tag, remove the inline tag.
 const afterDelete = (self: Squire, range?: Range): void => {
     try {
-        if (!range) {
-            range = self.getSelection();
-        }
+        range = range || self.getSelection();
         let node = range!.startContainer;
         // Climb the tree from the focus point while we are inside an empty
         // inline element
@@ -57,7 +55,7 @@ const afterDelete = (self: Squire, range?: Range): void => {
         if (
             node === self._root &&
             (node = node.firstChild!) &&
-            node.nodeName === 'BR'
+            isBrElement(node)
         ) {
             detach(node);
         }

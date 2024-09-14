@@ -2567,43 +2567,6 @@ class Squire {
         return this;
     }
 
-    // ---
-
-    _removeFormatting(
-        root: DocumentFragment | Element,
-        clean: DocumentFragment | Element,
-    ): DocumentFragment | Element {
-        for (
-            let node = root.firstChild, next: ChildNode | null;
-            node;
-            node = next
-        ) {
-            next = node.nextSibling;
-            if (isInline(node)) {
-                if (
-                    node instanceof Text ||
-                    node.nodeName === 'BR' ||
-                    node.nodeName === 'IMG'
-                ) {
-                    clean.append(node);
-                    continue;
-                }
-            } else if (isBlock(node)) {
-                clean.append(
-                    this.createDefaultBlock([
-                        this._removeFormatting(
-                            node as Element,
-                            document.createDocumentFragment(),
-                        ),
-                    ]),
-                );
-                continue;
-            }
-            this._removeFormatting(node as Element, clean);
-        }
-        return clean;
-    }
-
     /**
      * SnappyMail
      */

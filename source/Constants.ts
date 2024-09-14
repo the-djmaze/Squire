@@ -21,9 +21,6 @@ const ctrlKey = isMac || isIOS ? 'Meta-' : 'Ctrl-';
 
 const cantFocusEmptyTextNodes = isWebKit;
 
-const supportsInputEvents =
-    'onbeforeinput' in document && 'inputType' in new InputEvent('input');
-
 // Use [^ \t\r\n] instead of \S so that nbsp does not count as white-space
 const notWS = /[^ \t\r\n]/;
 
@@ -46,5 +43,4 @@ export {
     isWebKit,
     ctrlKey,
     cantFocusEmptyTextNodes,
-    supportsInputEvents,
 };

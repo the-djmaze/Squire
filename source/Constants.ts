@@ -11,7 +11,7 @@ const ua = navigator.userAgent;
 const isMac = /Mac OS X/.test(ua);
 const isWin = /Windows NT/.test(ua);
 const isIOS =
-    /iP(?:ad|hone|od)/.test(ua) || (isMac && !!navigator.maxTouchPoints);
+    /iP(?:ad|hone)/.test(ua) || (isMac && !!navigator.maxTouchPoints);
 const isAndroid = /Android/.test(ua);
 
 const isGecko = /Gecko\//.test(ua);

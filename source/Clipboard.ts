@@ -67,7 +67,7 @@ const extractRangeToClipboard = (
     }
     while (parent && parent !== copyRoot) {
         const newContents = parent.cloneNode(false);
-        newContents.appendChild(contents);
+        newContents.append(contents);
         contents = newContents;
         parent = parent.parentNode!;
     }
@@ -84,7 +84,7 @@ const extractRangeToClipboard = (
         plainTextOnly = true;
     } else {
         const node = createElement('DIV') as HTMLDivElement;
-        node.appendChild(contents);
+        node.append(contents);
         html = node.innerHTML;
         if (toCleanHTML) {
             html = toCleanHTML(html);

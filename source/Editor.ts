@@ -946,7 +946,7 @@ class Squire {
             if (child) {
                 node.replaceChild(block, child);
             } else {
-                node.appendChild(block);
+                node.append(block);
             }
         } else {
             while ((node = getNextBlock(node, root))) {
@@ -990,7 +990,7 @@ class Squire {
             if (child) {
                 node.replaceChild(block, child);
             } else {
-                node.appendChild(block);
+                node.append(block);
             }
         } else {
             while ((node = getNextBlock(node, root))) {
@@ -1005,7 +1005,7 @@ class Squire {
         while ((child = root.lastChild)) {
             root.removeChild(child);
         }
-        root.appendChild(frag);
+        root.append(frag);
 
         // Reset the undo stack
         this._undoIndex = -1;
@@ -1498,7 +1498,7 @@ class Squire {
                     }
                     const el = createElement(tag, attributes);
                     replaceWith(node, el);
-                    el.appendChild(node);
+                    el.append(node);
                 }
             } while (walker.nextNode());
 
@@ -1547,7 +1547,7 @@ class Squire {
         const endContainer = range.endContainer;
         const endOffset = range.endOffset;
         const toWrap: [Node, Node][] = [];
-        const examineNode = (node: Node, exemplar: Node) => {
+        const examineNode = (node: Node, exemplar: HTMLElement) => {
             // If the node is completely contained by the range then
             // we're going to remove all formatting so ignore it.
             if (isNodeContainedInRange(range, node, false)) {
@@ -1591,7 +1591,7 @@ class Squire {
         };
         const formatTags = Array.from(
             (root as Element).getElementsByTagName(tag),
-        ).filter((el: Node): boolean => {
+        ).filter((el: HTMLElement): boolean => {
             return (
                 isNodeContainedInRange(range, el, true) &&
                 hasTagAttributes(el, tag, attributes)
@@ -1608,7 +1608,7 @@ class Squire {
         toWrap.forEach(([el, node]) => {
             el = el.cloneNode(false);
             replaceWith(node, el);
-            el.appendChild(node);
+            el.append(node);
         });
         // and remove old formatting tags.
         formatTags.forEach((el: Element) => {
@@ -1926,7 +1926,7 @@ class Squire {
             last.nodeName !== this._config.blockTag ||
             !isBlock(last)
         ) {
-            root.appendChild(this.createDefaultBlock());
+            root.append(this.createDefaultBlock());
         }
     }
 
@@ -2092,7 +2092,7 @@ class Squire {
                 ).dir;
             }
             replaceWith(nodeAfterSplit, block);
-            block.appendChild(empty(nodeAfterSplit));
+            block.append(empty(nodeAfterSplit));
             nodeAfterSplit = block;
         }
 
@@ -2327,7 +2327,7 @@ class Squire {
         }
         do {
             next = startLi === endLi ? null : startLi.nextSibling;
-            newParent.appendChild(startLi);
+            newParent.append(startLi);
         } while ((startLi = next));
         next = newParent.nextSibling;
         if (next) {
@@ -2380,7 +2380,7 @@ class Squire {
                 newParent = newParent.parentNode!;
                 while (insertBefore) {
                     next = insertBefore.nextSibling;
-                    endLi.appendChild(insertBefore);
+                    endLi.append(insertBefore);
                     insertBefore = next;
                 }
                 insertBefore = list.parentNode!.nextSibling;
@@ -2433,13 +2433,13 @@ class Squire {
                 // Have we replaced the previous block with a new <ul>/<ol>?
                 const prev: ChildNode | null = node.previousSibling;
                 if (prev && prev.nodeName === type) {
-                    prev.appendChild(newLi);
+                    prev.append(newLi);
                     detach(node);
                     // Otherwise, replace this block with the <ul>/<ol>
                 } else {
                     replaceWith(node, createElement(type, listAttrs, [newLi]));
                 }
-                newLi.appendChild(empty(node));
+                newLi.append(empty(node));
                 walker.currentNode = newLi;
             } else {
                 node = node.parentNode;
@@ -2590,9 +2590,9 @@ class Squire {
                         replaceWith(nodes[l], empty(nodes[l]));
                     }
                     if (output.childNodes.length) {
-                        output.appendChild(document.createTextNode('\n'));
+                        output.append(document.createTextNode('\n'));
                     }
-                    output.appendChild(empty(node));
+                    output.append(empty(node));
                 }
                 // 4. Replace nbsp with regular sp
                 const textWalker = new TreeIterator<Text>(output, SHOW_TEXT);
@@ -2640,10 +2640,10 @@ class Squire {
                         const contents = document.createDocumentFragment();
                         let index: number;
                         while ((index = value.indexOf('\n')) > -1) {
-                            contents.appendChild(
+                            contents.append(
                                 document.createTextNode(value.slice(0, index)),
                             );
-                            contents.appendChild(createElement('BR'));
+                            contents.append(createElement('BR'));
                             value = value.slice(index + 1);
                         }
                         node.parentNode!.insertBefore(contents, node);
@@ -2688,11 +2688,11 @@ class Squire {
                     node.nodeName === 'BR' ||
                     node.nodeName === 'IMG'
                 ) {
-                    clean.appendChild(node);
+                    clean.append(node);
                     continue;
                 }
             } else if (isBlock(node)) {
-                clean.appendChild(
+                clean.append(
                     this.createDefaultBlock([
                         this._removeFormatting(
                             node as Element,
@@ -2754,7 +2754,7 @@ class Squire {
         // else is obliterated.
         while (nodeInSplit !== nodeAfterSplit) {
             nextNode = nodeInSplit!.nextSibling;
-            formattedNodes.appendChild(nodeInSplit!);
+            formattedNodes.append(nodeInSplit!);
             nodeInSplit = nextNode;
         }
         this._removeFormatting(formattedNodes, cleanNodes);

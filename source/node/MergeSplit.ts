@@ -70,7 +70,7 @@ const fixContainer = (
             if (!wrapper) {
                 wrapper = createElement('DIV');
             }
-            wrapper.appendChild(child);
+            wrapper.append(child);
         } else if (isBR || wrapper) {
             if (!wrapper) {
                 wrapper = createElement('DIV');
@@ -88,7 +88,7 @@ const fixContainer = (
         }
     });
     if (wrapper) {
-        container.appendChild(fixCursor(wrapper));
+        container.append(fixCursor(wrapper));
     }
     return container;
 };
@@ -126,7 +126,7 @@ const split = (
     // Add right-hand siblings to the clone
     while (nodeAfterSplit) {
         const next = nodeAfterSplit.nextSibling;
-        clone.appendChild(nodeAfterSplit);
+        clone.append(nodeAfterSplit);
         nodeAfterSplit = next;
     }
 
@@ -201,7 +201,7 @@ const _mergeInlines = (
         } else if (child instanceof Element) {
             let frag: DocumentFragment | undefined;
             while ((frag = frags.pop())) {
-                child.appendChild(frag);
+                child.append(frag);
             }
             _mergeInlines(child, fakeRange);
         }
@@ -251,7 +251,7 @@ const mergeWithBlock = (
         offset -= 1;
     }
 
-    block.appendChild(empty(next));
+    block.append(empty(next));
 
     range.setStart(block, offset);
     range.collapse(true);
@@ -272,15 +272,15 @@ const mergeContainers = (node: Node, root: Element): void => {
         if (!isContainer(prev)) {
             if (isListItem) {
                 const block = createElement('DIV');
-                block.appendChild(empty(prev));
-                prev.appendChild(block);
+                block.append(empty(prev));
+                prev.append(block);
             } else {
                 return;
             }
         }
         detach(node);
         const needsFix = !isContainer(node);
-        prev.appendChild(empty(node));
+        prev.append(empty(node));
         if (needsFix) {
             fixContainer(prev, root);
         }

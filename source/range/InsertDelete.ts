@@ -84,7 +84,7 @@ const insertNodeInRange = (range: Range, node: Node): void => {
     const childCount = children.length;
 
     if (startOffset === childCount) {
-        startContainer.appendChild(node);
+        startContainer.append(node);
     } else {
         startContainer.insertBefore(node, children[startOffset]);
     }
@@ -129,7 +129,7 @@ const extractContentsOfRange = (
     let node = split(startContainer, startOffset, common, root);
     while (node && node !== endContainer) {
         const next = node.nextSibling;
-        frag.appendChild(node);
+        frag.append(node);
         node = next;
     }
 
@@ -366,7 +366,7 @@ const insertTreeFragmentIntoRange = (
             // Collect any inline contents of the block after the range point
             blockContentsAfterSplit = document.createDocumentFragment();
             while ((node = container.childNodes[offset])) {
-                blockContentsAfterSplit.appendChild(node);
+                blockContentsAfterSplit.append(node);
             }
         }
         // And merge the first block in.

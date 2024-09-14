@@ -21,7 +21,7 @@ const createElement = (
         }
     }
     if (children) {
-        children.forEach((node) => el.appendChild(node));
+        children.forEach((node) => el.append(node));
     }
     return el;
 };
@@ -126,7 +126,7 @@ const empty = (node: Node): DocumentFragment => {
     const frag = document.createDocumentFragment();
     let child = node.firstChild;
     while (child) {
-        frag.appendChild(child);
+        frag.append(child);
         child = node.firstChild;
     }
     return frag;

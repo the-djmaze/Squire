@@ -1,4 +1,4 @@
-import { isWin, isGecko, notWS } from './Constants';
+import { isWin, notWS } from './Constants';
 import { createElement, detach } from './node/Node';
 import { getStartBlockOfRange, getEndBlockOfRange } from './range/Block';
 import { createRange, deleteContentsOfRange } from './range/InsertDelete';
@@ -182,7 +182,6 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
     // Current HTML5 Clipboard interface
     // ---------------------------------
     // https://html.spec.whatwg.org/multipage/interaction.html
-    if (items) {
         let l = items.length;
         while (l--) {
             const item = items[l];
@@ -240,46 +239,7 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
                     }
                 });
             }
-            return;
-    }
 
-    // Old interface
-    // -------------
-
-    // Safari (and indeed many other OS X apps) copies stuff as text/rtf
-    // rather than text/html; even from a webpage in Safari. The only way
-    // to get an HTML version is to fallback to letting the browser insert
-    // the content. Same for getting image data. *Sigh*.
-    //
-    // Firefox is even worse: it doesn't even let you know that there might be
-    // an RTF version on the clipboard, but it will also convert to HTML if you
-    // let the browser insert the content. I've filed
-    // https://bugzilla.mozilla.org/show_bug.cgi?id=1254028
-    const types = clipboardData.types;
-    if (
-        types &&
-        (indexOf.call(types, 'text/html') > -1 ||
-            (!isGecko &&
-                indexOf.call(types, 'text/plain') > -1 &&
-                indexOf.call(types, 'text/rtf') < 0))
-    ) {
-        event.preventDefault();
-        // Abiword on Linux copies a plain text and html version, but the HTML
-        // version is the empty string! So always try to get HTML, but if none,
-        // insert plain text instead. On iOS, Facebook (and possibly other
-        // apps?) copy links as type text/uri-list, but also insert a **blank**
-        // text/plain item onto the clipboard. Why? Who knows.
-        let data;
-        if (!choosePlain && (data = clipboardData.getData('text/html'))) {
-            this.insertHTML(data, true);
-        } else if (
-            (data = clipboardData.getData('text/plain')) ||
-            (data = clipboardData.getData('text/uri-list'))
-        ) {
-            this.insertPlainText(data, true);
-        }
-        return;
-    }
 };
 
 // On Windows you can drag an drop text. We can't handle this ourselves, because

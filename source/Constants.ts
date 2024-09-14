@@ -15,8 +15,7 @@ const isIOS =
 const isAndroid = /Android/.test(ua);
 
 const isGecko = /Gecko\//.test(ua);
-const isLegacyEdge = /Edge\//.test(ua);
-const isWebKit = !isLegacyEdge && /WebKit\//.test(ua);
+const isWebKit = /WebKit\//.test(ua);
 
 const ctrlKey = isMac || isIOS ? 'Meta-' : 'Ctrl-';
 
@@ -44,7 +43,6 @@ export {
     isIOS,
     isAndroid,
     isGecko,
-    isLegacyEdge,
     isWebKit,
     ctrlKey,
     cantFocusEmptyTextNodes,

@@ -1,4 +1,4 @@
-import { isWin, isGecko, isLegacyEdge, notWS } from './Constants';
+import { isWin, isGecko, notWS } from './Constants';
 import { createElement, detach } from './node/Node';
 import { getStartBlockOfRange, getEndBlockOfRange } from './range/Block';
 import { createRange, deleteContentsOfRange } from './range/InsertDelete';
@@ -25,7 +25,7 @@ const extractRangeToClipboard = (
 ): boolean => {
     // Edge only seems to support setting plain text as of 2016-03-11.
     const clipboardData = event.clipboardData;
-    if (isLegacyEdge || !clipboardData) {
+    if (!clipboardData) {
         return false;
     }
     // First get the plain text version from the range (unless we have a custom
@@ -218,11 +218,6 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
             return;
         }
 
-        // Edge only provides access to plain text as of 2016-03-11 and gives no
-        // indication there should be an HTML part. However, it does support
-        // access to image data, so we check for that first. Otherwise though,
-        // fall through to fallback clipboard handling methods
-        if (!isLegacyEdge) {
             event.preventDefault();
             if (htmlItem && (!choosePlain || !plainItem)) {
                 htmlItem.getAsString((html) => {
@@ -246,7 +241,6 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
                 });
             }
             return;
-        }
     }
 
     // Old interface
@@ -263,7 +257,6 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
     // https://bugzilla.mozilla.org/show_bug.cgi?id=1254028
     const types = clipboardData?.types;
     if (
-        !isLegacyEdge &&
         types &&
         (indexOf.call(types, 'text/html') > -1 ||
             (!isGecko &&

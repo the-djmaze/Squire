@@ -2787,6 +2787,68 @@ class Squire {
 
         return this.focus();
     }
+
+    /**
+     * SnappyMail
+     */
+    changeIndentationLevel(direction) {
+        let parent = this.getSelectionClosest("UL,OL,BLOCKQUOTE");
+        if (parent || "increase" === direction) {
+            direction += (!parent || "BLOCKQUOTE" === parent.nodeName) ? "Quote" : "List";
+            return this[direction + "Level"]();
+        }
+    }
+
+    getSelectionClosest(selector) {
+        return getClosest(this.getSelection().commonAncestorContainer, this._root, selector);
+    }
+
+    setAttribute(name, value) {
+        let range = this.getSelection();
+        let start = range?.startContainer || {};
+        let end = range?.endContainer || {};
+        if ("dir" == name || (isTextNode(start) && 0 === range.startOffset && start === end && end.length === range.endOffset)) {
+            this._recordUndoState(range);
+            setAttributes(start.parentNode, { [name]: value });
+            this._docWasChanged();
+        } else if (null == value) {
+            this._recordUndoState(range);
+            let node = getClosest(range.commonAncestorContainer, this._root, "*");
+            range.collapsed ? setAttributes(node, { [name]: value }) : node.querySelectorAll("*").forEach((el) => setAttributes(el, { [name]: value }));
+            this._docWasChanged();
+        } else {
+            this.changeFormat({
+                tag: "SPAN",
+                attributes: { [name]: value }
+            }, null, range);
+        }
+        return this.focus();
+    }
+
+    setStyle(style) {
+        this.setAttribute("style", style);
+    }
+
+    toggleTag(name, remove) {
+        let range = this.getSelection();
+        if (this.hasFormat(name, null, range)) {
+            this.changeFormat(null, { tag: name }, range);
+        } else {
+            this.changeFormat({ tag: name }, remove ? { tag: remove } : null, range);
+        }
+    }
+
+    setRange(range) {
+        this.setSelection(range);
+        this._updatePath(range, true);
+    }
+
+    setConfig(config) {
+        this._config = mergeObjects({
+            addLinks: true
+        }, config, true);
+        return this;
+    }
 }
 
 // ---

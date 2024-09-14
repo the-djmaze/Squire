@@ -1641,52 +1641,28 @@ class Squire {
 
     // ---
 
-    bold(): Squire {
-        return this.changeFormat({ tag: 'B' });
+    bold(): void {
+        this.toggleTag("B");
     }
 
-    removeBold(): Squire {
-        return this.changeFormat(null, { tag: 'B' });
+    italic(): void {
+        this.toggleTag("I");
     }
 
-    italic(): Squire {
-        return this.changeFormat({ tag: 'I' });
+    underline(): void {
+        this.toggleTag("U");
     }
 
-    removeItalic(): Squire {
-        return this.changeFormat(null, { tag: 'I' });
+    strikethrough(): void {
+        this.toggleTag("S");
     }
 
-    underline(): Squire {
-        return this.changeFormat({ tag: 'U' });
+    subscript(): void {
+        this.toggleTag("SUB", "SUP");
     }
 
-    removeUnderline(): Squire {
-        return this.changeFormat(null, { tag: 'U' });
-    }
-
-    strikethrough(): Squire {
-        return this.changeFormat({ tag: 'S' });
-    }
-
-    removeStrikethrough(): Squire {
-        return this.changeFormat(null, { tag: 'S' });
-    }
-
-    subscript(): Squire {
-        return this.changeFormat({ tag: 'SUB' }, { tag: 'SUP' });
-    }
-
-    removeSubscript(): Squire {
-        return this.changeFormat(null, { tag: 'SUB' });
-    }
-
-    superscript(): Squire {
-        return this.changeFormat({ tag: 'SUP' }, { tag: 'SUB' });
-    }
-
-    removeSuperscript(): Squire {
-        return this.changeFormat(null, { tag: 'SUP' });
+    superscript(): void {
+        this.toggleTag("SUP", "SUB");
     }
 
     // ---

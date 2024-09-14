@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file, starting fr
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## SnappyMail
+
+### Added
+-   getClosest()
+-   Squire.changeIndentationLevel(direction)
+-   Squire.getSelectionClosest(selector)
+-   Squire.setAttribute(name, value)
+-   Squire.setStyle(style)
+-   Squire.toggleTag(name, remove)
+-   Squire.setRange(range)
+-   Squire.setConfig(config)
+
+### Changed
+-   Replaced removeAllFormatting(), setHighlightColor(), setTextColor()
+    & setFontFace() with new setStyle()
+-   Replaced most getNearest() with new getClosest()
+-   Merged:
+    * removeBold() into bold()
+    * removeItalic() into italic()
+    * removeUnderline() into underline()
+    * removeStrikethrough() into strikethrough()
+    * removeSubscript() into subscript()
+    * removeSuperscript() into superscript()
+-   Replaced appendChild() with DocumentFragment.append() and Element.append()
+
+### Removed
+-   isGecko, not used anymore
+-   Old clipboard code as all browsers support DataTransfer
+-   iPod detection
+-   supportsInputEvents as onbeforeinput is always supported
+-   Support for browsers that don't support clipboardData
+-   isLegacyEdge as it is not supported
+
 ## [2.3.2] - 2024-08-16
 
 ### Fixed

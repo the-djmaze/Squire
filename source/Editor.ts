@@ -322,7 +322,7 @@ class Squire {
             }
             case 'formatRemove':
                 event.preventDefault();
-                this.removeAllFormatting();
+                this.setStyle();
                 break;
             case 'formatSetBlockTextDirection': {
                 event.preventDefault();
@@ -335,15 +335,15 @@ class Squire {
             }
             case 'formatBackColor':
                 event.preventDefault();
-                this.setHighlightColor(event.data);
+                this.setStyle({ backgroundColor: event.data });
                 break;
             case 'formatFontColor':
                 event.preventDefault();
-                this.setTextColor(event.data);
+                this.setStyle({ color: event.data });
                 break;
             case 'formatFontName':
                 event.preventDefault();
-                this.setFontFace(event.data);
+                this.setStyle({ fontFamily: event.data });
                 break;
         }
     }
@@ -1813,86 +1813,6 @@ class Squire {
         return this;
     }
 
-    // ---
-
-    setFontFace(name: string | null): Squire {
-        const className = this._config.classNames.fontFamily;
-        return this.changeFormat(
-            name
-                ? {
-                      tag: 'SPAN',
-                      attributes: {
-                          class: className,
-                          style: 'font-family: ' + name + ', sans-serif;',
-                      },
-                  }
-                : null,
-            {
-                tag: 'SPAN',
-                attributes: { class: className },
-            },
-        );
-    }
-
-    setFontSize(size: string | null): Squire {
-        const className = this._config.classNames.fontSize;
-        return this.changeFormat(
-            size
-                ? {
-                      tag: 'SPAN',
-                      attributes: {
-                          class: className,
-                          style:
-                              'font-size: ' +
-                              (typeof size === 'number' ? size + 'px' : size),
-                      },
-                  }
-                : null,
-            {
-                tag: 'SPAN',
-                attributes: { class: className },
-            },
-        );
-    }
-
-    setTextColor(color: string | null): Squire {
-        const className = this._config.classNames.color;
-        return this.changeFormat(
-            color
-                ? {
-                      tag: 'SPAN',
-                      attributes: {
-                          class: className,
-                          style: 'color:' + color,
-                      },
-                  }
-                : null,
-            {
-                tag: 'SPAN',
-                attributes: { class: className },
-            },
-        );
-    }
-
-    setHighlightColor(color: string | null): Squire {
-        const className = this._config.classNames.highlight;
-        return this.changeFormat(
-            color
-                ? {
-                      tag: 'SPAN',
-                      attributes: {
-                          class: className,
-                          style: 'background-color:' + color,
-                      },
-                  }
-                : null,
-            {
-                tag: 'SPAN',
-                attributes: { class: className },
-            },
-        );
-    }
-
     // --- Block formatting
 
     _ensureBottomLine(): void {
@@ -2682,87 +2602,6 @@ class Squire {
             this._removeFormatting(node as Element, clean);
         }
         return clean;
-    }
-
-    removeAllFormatting(range?: Range): Squire {
-        if (!range) {
-            range = this.getSelection();
-        }
-        if (range.collapsed) {
-            return this.focus();
-        }
-
-        const root = this._root;
-        let stopNode = range.commonAncestorContainer;
-        while (stopNode && !isBlock(stopNode)) {
-            stopNode = stopNode.parentNode!;
-        }
-        if (!stopNode) {
-            expandRangeToBlockBoundaries(range, root);
-            stopNode = root;
-        }
-        if (stopNode instanceof Text) {
-            return this.focus();
-        }
-
-        // Record undo point
-        this.saveUndoState(range);
-
-        // Avoid splitting where we're already at edges.
-        moveRangeBoundariesUpTree(range, stopNode, stopNode, root);
-
-        // Split the selection up to the block, or if whole selection in same
-        // block, expand range boundaries to ends of block and split up to root.
-        const startContainer = range.startContainer;
-        let startOffset = range.startOffset;
-        const endContainer = range.endContainer;
-        let endOffset = range.endOffset;
-
-        // Split end point first to avoid problems when end and start
-        // in same container.
-        const formattedNodes = document.createDocumentFragment();
-        const cleanNodes = document.createDocumentFragment();
-        const nodeAfterSplit = split(endContainer, endOffset, stopNode, root);
-        let nodeInSplit = split(startContainer, startOffset, stopNode, root);
-        let nextNode: ChildNode | null;
-
-        // Then replace contents in split with a cleaned version of the same:
-        // blocks become default blocks, text and leaf nodes survive, everything
-        // else is obliterated.
-        while (nodeInSplit !== nodeAfterSplit) {
-            nextNode = nodeInSplit!.nextSibling;
-            formattedNodes.append(nodeInSplit!);
-            nodeInSplit = nextNode;
-        }
-        this._removeFormatting(formattedNodes, cleanNodes);
-        cleanNodes.normalize();
-        nodeInSplit = cleanNodes.firstChild;
-        nextNode = cleanNodes.lastChild;
-
-        // Restore selection
-        if (nodeInSplit) {
-            stopNode.insertBefore(cleanNodes, nodeAfterSplit);
-            const childNodes = Array.from(stopNode.childNodes) as Node[];
-            startOffset = childNodes.indexOf(nodeInSplit);
-            endOffset = nextNode ? childNodes.indexOf(nextNode) + 1 : 0;
-        } else if (nodeAfterSplit) {
-            const childNodes = Array.from(stopNode.childNodes) as Node[];
-            startOffset = childNodes.indexOf(nodeAfterSplit);
-            endOffset = startOffset;
-        }
-
-        // Merge text nodes at edges, if possible
-        range.setStart(stopNode, startOffset);
-        range.setEnd(stopNode, endOffset);
-        mergeInlines(stopNode, range);
-
-        // And move back down the tree
-        moveRangeBoundariesDownTree(range);
-
-        this.setSelection(range);
-        this._updatePath(range, true);
-
-        return this.focus();
     }
 
     /**

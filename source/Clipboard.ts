@@ -172,7 +172,7 @@ const _monitorShiftKey = function (this: Squire, event: KeyboardEvent): void {
 
 const _onPaste = function (this: Squire, event: ClipboardEvent): void {
     const clipboardData = event.clipboardData;
-    const items = clipboardData?.items;
+    const items = clipboardData.items;
     const choosePlain: boolean | undefined = this._isShiftDown;
     let hasRTF = false;
     let hasImage = false;
@@ -255,7 +255,7 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
     // an RTF version on the clipboard, but it will also convert to HTML if you
     // let the browser insert the content. I've filed
     // https://bugzilla.mozilla.org/show_bug.cgi?id=1254028
-    const types = clipboardData?.types;
+    const types = clipboardData.types;
     if (
         types &&
         (indexOf.call(types, 'text/html') > -1 ||
@@ -280,70 +280,6 @@ const _onPaste = function (this: Squire, event: ClipboardEvent): void {
         }
         return;
     }
-
-    // No interface. Includes all versions of IE :(
-    // --------------------------------------------
-
-    const body = document.body;
-    const range = this.getSelection();
-    const startContainer = range.startContainer;
-    const startOffset = range.startOffset;
-    const endContainer = range.endContainer;
-    const endOffset = range.endOffset;
-
-    // We need to position the pasteArea in the visible portion of the screen
-    // to stop the browser auto-scrolling.
-    let pasteArea: Element = createElement('DIV', {
-        contenteditable: 'true',
-        style: 'position:fixed; overflow:hidden; top:0; right:100%; width:1px; height:1px;',
-    });
-    body.appendChild(pasteArea);
-    range.selectNodeContents(pasteArea);
-    this.setSelection(range);
-
-    // A setTimeout of 0 means this is added to the back of the
-    // single javascript thread, so it will be executed after the
-    // paste event.
-    setTimeout(() => {
-        try {
-            // Get the pasted content and clean
-            let html = '';
-            let next: Element = pasteArea;
-            let first: Node | null;
-
-            // #88: Chrome can apparently split the paste area if certain
-            // content is inserted; gather them all up.
-            while ((pasteArea = next)) {
-                next = pasteArea.nextSibling as Element;
-                detach(pasteArea);
-                // Safari and IE like putting extra divs around things.
-                first = pasteArea.firstChild;
-                if (
-                    first &&
-                    first === pasteArea.lastChild &&
-                    first instanceof HTMLDivElement
-                ) {
-                    pasteArea = first;
-                }
-                html += pasteArea.innerHTML;
-            }
-
-            this.setSelection(
-                createRange(
-                    startContainer,
-                    startOffset,
-                    endContainer,
-                    endOffset,
-                ),
-            );
-
-            if (html) {
-                this.insertHTML(html, true);
-            }
-        } catch (error) {
-            this._config.didError(error);
-        }
-    }, 0);
 };
 
 // On Windows you can drag an drop text. We can't handle this ourselves, because

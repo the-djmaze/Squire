@@ -2,7 +2,7 @@ import {
     rangeDoesStartAtBlockBoundary,
     getStartBlockOfRange,
 } from '../range/Block';
-import { getNearest } from '../node/Node';
+import { getClosest } from '../node/Node';
 
 import type { Squire } from '../Editor';
 
@@ -36,7 +36,7 @@ const ShiftTab = (self: Squire, event: KeyboardEvent, range: Range): void => {
     if (range.collapsed && rangeDoesStartAtBlockBoundary(range, root)) {
         // Break list
         const node = range.startContainer;
-        if (getNearest(node, root, 'UL') || getNearest(node, root, 'OL')) {
+        if (getClosest(node, root, 'UL,OL')) {
             event.preventDefault();
             self.decreaseListLevel(range);
         }

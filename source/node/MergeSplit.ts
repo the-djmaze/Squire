@@ -1,7 +1,7 @@
 import { ZWS, cantFocusEmptyTextNodes } from '../Constants';
 import {
     createElement,
-    getNearest,
+    getClosest,
     areAlike,
     getLength,
     detach,
@@ -133,7 +133,7 @@ const split = (
     // Maintain li numbering if inside a quote.
     if (
         node instanceof HTMLOListElement &&
-        getNearest(node, root, 'BLOCKQUOTE')
+        getClosest(node, root, 'BLOCKQUOTE')
     ) {
         (clone as HTMLOListElement).start =
             (+node.start || 1) + node.childNodes.length - 1;

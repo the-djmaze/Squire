@@ -2,7 +2,7 @@ import { ZWS } from '../Constants';
 import { getPreviousBlock } from '../node/Block';
 import { isInline, isBlock } from '../node/Category';
 import { fixCursor } from '../node/MergeSplit';
-import { createElement, detach, getNearest } from '../node/Node';
+import { createElement, detach, getClosest } from '../node/Node';
 import { moveRangeBoundariesDownTree } from '../range/Boundaries';
 
 import type { Squire } from '../Editor';
@@ -83,7 +83,7 @@ const detachUneditableNode = (node: Node, root: Element): void => {
 // ---
 
 const linkifyText = (self: Squire, textNode: Text, offset: number): void => {
-    if (getNearest(textNode, self._root, 'A')) {
+    if (getClosest(textNode, self._root, 'A')) {
         return;
     }
     const data = textNode.data || '';

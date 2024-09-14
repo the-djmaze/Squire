@@ -5,7 +5,7 @@ import {
     mergeContainers,
     mergeWithBlock,
 } from '../node/MergeSplit';
-import { getNearest } from '../node/Node';
+import { getClosest } from '../node/Node';
 import {
     getStartBlockOfRange,
     rangeDoesStartAtBlockBoundary,
@@ -64,13 +64,13 @@ const Backspace = (self: Squire, event: KeyboardEvent, range: Range): void => {
             // to break lists/blockquote.
         } else if (current) {
             if (
-                getNearest(current, root, 'UL') ||
-                getNearest(current, root, 'OL')
+                getClosest(current, root, 'UL') ||
+                getClosest(current, root, 'OL')
             ) {
                 // Break list
                 self.decreaseListLevel(range);
                 return;
-            } else if (getNearest(current, root, 'BLOCKQUOTE')) {
+            } else if (getClosest(current, root, 'BLOCKQUOTE')) {
                 // Break blockquote
                 self.removeQuote(range);
                 return;

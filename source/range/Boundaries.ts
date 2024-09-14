@@ -1,5 +1,5 @@
 import { isLeaf } from '../node/Category';
-import { getLength, getNearest } from '../node/Node';
+import { getLength, getClosest } from '../node/Node';
 import { isLineBreak } from '../node/Whitespace';
 import { TEXT_NODE } from '../Constants';
 
@@ -165,7 +165,7 @@ const moveRangeBoundaryOutOf = (
     tag: string,
     root: Element,
 ): Range => {
-    let parent = getNearest(range.endContainer, root, tag);
+    let parent = getClosest(range.endContainer, root, tag);
     if (parent && (parent = parent.parentNode)) {
         const clone = range.cloneRange();
         moveRangeBoundariesUpTree(clone, parent, parent, root);

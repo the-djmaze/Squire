@@ -147,6 +147,15 @@ const replaceWith = (node: Node, node2: Node): void => {
     }
 };
 
+/**
+ * SnappyMail
+ */
+
+const getClosest = (node, root, selector) => {
+    node = ((node && !node.closest) ? node.parentElement : node)?.closest(selector);
+    return (node && root.contains(node)) ? node : null;
+};
+
 // --- Export
 
 export {
@@ -160,4 +169,5 @@ export {
     getNodeBeforeOffset,
     hasTagAttributes,
     replaceWith,
+    getClosest,
 };

@@ -10,6 +10,7 @@ import {
     getNearest,
     hasTagAttributes,
     replaceWith,
+    getClosest,
 } from './node/Node';
 import {
     isLeaf,
@@ -1172,7 +1173,7 @@ class Squire {
         const range = this.getSelection();
         if (
             range.collapsed &&
-            getNearest(range.startContainer, this._root, 'PRE')
+            getClosest(range.startContainer, this._root, 'PRE')
         ) {
             const startContainer: Node = range.startContainer;
             let offset = range.startOffset;
@@ -1773,7 +1774,7 @@ class Squire {
         const walker = new TreeIterator<Text>(
             searchInNode,
             SHOW_TEXT,
-            (node) => !getNearest(node, root || this._root, 'A'),
+            (node) => !getClosest(node, root || this._root, 'A'),
         );
         const linkRegExp = this.linkRegExp;
         const defaultAttributes = this._config.tagAttributes.a;
@@ -1955,7 +1956,7 @@ class Squire {
         block = getStartBlockOfRange(range, root);
 
         // Inside a PRE, insert literal newline, unless on blank line.
-        if (block && (parent = getNearest(block, root, 'PRE'))) {
+        if (block && (parent = getClosest(block, root, 'PRE'))) {
             moveRangeBoundariesDownTree(range);
             node = range.startContainer;
             const offset = range.startOffset;
@@ -2022,20 +2023,20 @@ class Squire {
         }
 
         // If in a list, we'll split the LI instead.
-        if ((parent = getNearest(block, root, 'LI'))) {
+        if ((parent = getClosest(block, root, 'LI'))) {
             block = parent;
         }
 
         if (isEmptyBlock(block as Element)) {
             if (
-                getNearest(block, root, 'UL') ||
-                getNearest(block, root, 'OL')
+                getClosest(block, root, 'UL') ||
+                getClosest(block, root, 'OL')
             ) {
                 // Break list
                 this.decreaseListLevel(range);
                 return this;
                 // Break blockquote
-            } else if (getNearest(block, root, 'BLOCKQUOTE')) {
+            } else if (getClosest(block, root, 'BLOCKQUOTE')) {
                 this.replaceWithBlankLine(range);
                 return this;
             }
@@ -2486,7 +2487,7 @@ class Squire {
         this.modifyBlocks((frag) => {
             Array.from(frag.querySelectorAll('blockquote'))
                 .filter((el: Node) => {
-                    return !getNearest(el.parentNode, frag, 'BLOCKQUOTE');
+                    return !getClosest(el.parentNode, frag, 'BLOCKQUOTE');
                 })
                 .forEach((el: Node) => {
                     replaceWith(el, empty(el));
@@ -2600,7 +2601,7 @@ class Squire {
     removeCode(): Squire {
         const range = this.getSelection();
         const ancestor = range.commonAncestorContainer;
-        const inPre = getNearest(ancestor, this._root, 'PRE');
+        const inPre = getClosest(ancestor, this._root, 'PRE');
         if (inPre) {
             this.modifyBlocks((frag) => {
                 const root = this._root;

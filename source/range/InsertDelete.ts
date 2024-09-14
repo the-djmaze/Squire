@@ -6,7 +6,7 @@ import {
     fixContainer,
     mergeContainers,
 } from '../node/MergeSplit';
-import { detach, getNearest, getLength } from '../node/Node';
+import { detach, getClosest, getLength } from '../node/Node';
 import { TreeIterator, SHOW_ELEMENT_OR_TEXT } from '../node/TreeIterator';
 import { isInline, isContainer, isLeaf } from '../node/Category';
 import { getNextBlock, isEmptyBlock, getPreviousBlock } from '../node/Block';
@@ -319,7 +319,7 @@ const insertTreeFragmentIntoRange = (
 
     // Where will we split up to? First blockquote parent, otherwise root.
     const stopPoint =
-        getNearest(range.endContainer, root, 'BLOCKQUOTE') || root;
+        getClosest(range.endContainer, root, 'BLOCKQUOTE') || root;
 
     // Merge the contents of the first block in the frag with the focused block.
     // If there are contents in the block after the focus point, collect this
@@ -339,8 +339,8 @@ const insertTreeFragmentIntoRange = (
         firstBlockInFrag &&
         !replaceBlock &&
         // Don't merge table cells or PRE elements into block
-        !getNearest(firstBlockInFrag, frag, 'PRE') &&
-        !getNearest(firstBlockInFrag, frag, 'TABLE')
+        !getClosest(firstBlockInFrag, frag, 'PRE') &&
+        !getClosest(firstBlockInFrag, frag, 'TABLE')
     ) {
         moveRangeBoundariesUpTree(range, block, block, root);
         range.collapse(true); // collapse to start

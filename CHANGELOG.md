@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 -   getClosest()
+-   setAttributes()
 -   Squire.changeIndentationLevel(direction)
 -   Squire.getSelectionClosest(selector)
 -   Squire.setAttribute(name, value)
@@ -17,6 +18,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 -   Squire.setConfig(config)
 
 ### Changed
+-   build.js use es2020
+-   Tab key also indents blockquote
+-   Replaced TreeIterator with extended TreeWalker
 -   Replaced removeAllFormatting(), setHighlightColor(), setTextColor()
     & setFontFace() with new setStyle()
 -   Replaced most getNearest() with new getClosest()

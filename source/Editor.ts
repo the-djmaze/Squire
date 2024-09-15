@@ -3,7 +3,7 @@ import {
     SHOW_TEXT,
     SHOW_ELEMENT_OR_TEXT,
 } from './node/TreeIterator';
-import { createTreeWalker } from './node/TreeWalker';
+import { FILTER_ACCEPT, createTreeWalker } from './node/TreeWalker';
 import {
     createElement,
     detach,
@@ -1458,7 +1458,7 @@ class Squire {
             if (
                 (!(startContainer instanceof Element) &&
                     !(startContainer instanceof Text)) ||
-                NodeFilter.FILTER_ACCEPT !== walker.filter.acceptNode(startContainer)
+                FILTER_ACCEPT !== walker.filter.acceptNode(startContainer)
             ) {
                 const next = walker.nextNode();
                 // If there are no interesting nodes in the selection, abort

@@ -1,5 +1,5 @@
 import { SHOW_ELEMENT_OR_TEXT, TreeIterator } from '../node/TreeIterator';
-import { createTreeWalker } from '../node/TreeWalker';
+import { FILTER_ACCEPT, createTreeWalker } from '../node/TreeWalker';
 import { isNodeContainedInRange } from './Boundaries';
 import { isInline } from '../node/Category';
 
@@ -28,7 +28,7 @@ const getTextContentsOfRange = (range: Range) => {
 
     if (
         (!(node instanceof Element) && !(node instanceof Text)) ||
-        NodeFilter.FILTER_ACCEPT !== walker.filter.acceptNode(node)
+        FILTER_ACCEPT !== walker.filter.acceptNode(node)
     ) {
         node = walker.nextNode();
     }

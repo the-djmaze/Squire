@@ -13,6 +13,12 @@ const Tab = (self: Squire, event: KeyboardEvent, range: Range): void => {
     self._removeZWS();
     // If no selection and at start of block
     if (range.collapsed && rangeDoesStartAtBlockBoundary(range, root)) {
+        // When inside a list or blockquote
+        getClosest(range.startContainer, root, "UL,OL,BLOCKQUOTE")
+        // Then increase the list or blockquote level
+        && self.changeIndentationLevel("increase")
+        && event.preventDefault();
+/*
         let node: Node = getStartBlockOfRange(range, root)!;
         // Iterate through the block's parents
         let parent: Node | null;
@@ -26,6 +32,7 @@ const Tab = (self: Squire, event: KeyboardEvent, range: Range): void => {
             }
             node = parent;
         }
+*/
     }
 };
 
@@ -34,12 +41,16 @@ const ShiftTab = (self: Squire, event: KeyboardEvent, range: Range): void => {
     self._removeZWS();
     // If no selection and at start of block
     if (range.collapsed && rangeDoesStartAtBlockBoundary(range, root)) {
-        // Break list
+        // Break list or blockquote
+        decreaseLevel(self, range, range.startContainer)
+        && event.preventDefault();
+/*
         const node = range.startContainer;
         if (getClosest(node, root, 'UL,OL')) {
             event.preventDefault();
             self.decreaseListLevel(range);
         }
+*/
     }
 };
 

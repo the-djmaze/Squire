@@ -20,9 +20,9 @@ const createTreeWalker = (root: Node, whatToShow: NODE_TYPE, filter?: (n: T) => 
     document.createTreeWalker(
         root,
         whatToShow,
-        filter ? {
-            acceptNode: (node) => filter(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP
-        } : null
+        {
+            acceptNode: node => (!filter || filter(node)) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP
+        }
     );
 
 // ---

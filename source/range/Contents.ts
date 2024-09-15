@@ -28,7 +28,7 @@ const getTextContentsOfRange = (range: Range) => {
 
     if (
         (!(node instanceof Element) && !(node instanceof Text)) ||
-        !walker.filter(node)
+        !walker.filter.acceptNode(node)
     ) {
         node = walker.nextNode();
     }

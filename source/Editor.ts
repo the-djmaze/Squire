@@ -2592,7 +2592,7 @@ class Squire {
         let range = this.getSelection();
         let start = range?.startContainer || {};
         let end = range?.endContainer || {};
-        if ("dir" == name || (isTextNode(start) && 0 === range.startOffset && start === end && end.length === range.endOffset)) {
+        if ("dir" == name || (start instanceof Text && 0 === range.startOffset && start === end && end.length === range.endOffset)) {
             this._recordUndoState(range);
             setAttributes(start.parentNode, { [name]: value });
             this._docWasChanged();

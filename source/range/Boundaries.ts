@@ -15,19 +15,22 @@ const isNodeContainedInRange = (
     node: Node,
     partial: boolean,
 ): boolean => {
-    const nodeRange = document.createRange();
-    nodeRange.selectNode(node);
     if (partial) {
         // Node must not finish before range starts or start after range
         // finishes.
+        return range.intersectsNode(node);
+/*
         const nodeEndBeforeStart =
             range.compareBoundaryPoints(END_TO_START, nodeRange) > -1;
         const nodeStartAfterEnd =
             range.compareBoundaryPoints(START_TO_END, nodeRange) < 1;
         return !nodeEndBeforeStart && !nodeStartAfterEnd;
+*/
     } else {
         // Node must start after range starts and finish before range
         // finishes
+        const nodeRange = document.createRange();
+        nodeRange.selectNode(node);
         const nodeStartAfterStart =
             range.compareBoundaryPoints(START_TO_START, nodeRange) < 1;
         const nodeEndBeforeEnd =

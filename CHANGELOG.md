@@ -34,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 -   Replaced appendChild() with DocumentFragment.append() and Element.append()
 -   isNodeContainedInRange() use Range.intersectsNode() for partial match
 -   Faster cleanTree()
+-   Cleaner stylesRewriters handling
 
 ### Removed
 -   isGecko, not used anymore

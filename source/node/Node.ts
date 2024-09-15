@@ -12,12 +12,8 @@ const createElement = (
         children = props;
         props = null;
     }
-    if (props) {
-        setAttributes(el, props);
-    }
-    if (children) {
-        children.forEach((node) => el.append(node));
-    }
+    setAttributes(el, props);
+    children && el.append(...children);
     return el;
 };
 
@@ -107,40 +103,28 @@ const getNodeAfterOffset = (node: Node, offset: number): Node | null => {
     return returnNode;
 };
 
-const getLength = (node: Node): number => {
-    return node instanceof Element || node instanceof DocumentFragment
+const getLength = (node: Node): number =>
+    node instanceof Element || node instanceof DocumentFragment
         ? node.childNodes.length
         : node instanceof CharacterData
           ? node.length
           : 0;
-};
 
 // --- Manipulation
 
 const empty = (node: Node): DocumentFragment => {
     const frag = document.createDocumentFragment();
-    let child = node.firstChild;
-    while (child) {
-        frag.append(child);
-        child = node.firstChild;
-    }
+    frag.append(...node.childNodes);
     return frag;
 };
 
 const detach = (node: Node): Node => {
-    const parent = node.parentNode;
-    if (parent) {
-        parent.removeChild(node);
-    }
+    node.parentNode?.removeChild(node);
     return node;
 };
 
-const replaceWith = (node: Node, node2: Node): void => {
-    const parent = node.parentNode;
-    if (parent) {
-        parent.replaceChild(node2, node);
-    }
-};
+const replaceWith = (node: Node, node2: Node): void =>
+    node.parentNode?.replaceChild(node2, node);
 
 /**
  * SnappyMail

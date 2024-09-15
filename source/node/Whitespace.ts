@@ -6,12 +6,11 @@ import { createTreeWalker } from './TreeWalker';
 
 // ---
 
-const notWSTextNode = (node: Node): boolean => {
-    return node instanceof Element
+const notWSTextNode = (node: Node): boolean =>
+    node instanceof Element
         ? node.nodeName === 'BR'
         : // okay if data is 'undefined' here.
           notWS.test((node as CharacterData).data);
-};
 
 const isLineBreak = (br: Element, isLBIfEmptyBlock: boolean): boolean => {
     let block = br.parentNode!;

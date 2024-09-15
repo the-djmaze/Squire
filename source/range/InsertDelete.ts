@@ -69,7 +69,7 @@ const insertNodeInRange = (range: Range, node: Node): void => {
                     endOffset -= startOffset;
                     endContainer = afterSplit;
                 } else if (endContainer === parent) {
-                    endOffset += 1;
+                    ++endOffset;
                 }
                 startContainer = afterSplit;
             }

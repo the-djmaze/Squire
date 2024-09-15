@@ -6,9 +6,7 @@ import { TEXT_NODE } from '../Constants';
 // ---
 
 const START_TO_START = 0; // Range.START_TO_START
-const START_TO_END = 1; // Range.START_TO_END
 const END_TO_END = 2; // Range.END_TO_END
-const END_TO_START = 3; // Range.END_TO_START
 
 const isNodeContainedInRange = (
     range: Range,
@@ -19,13 +17,6 @@ const isNodeContainedInRange = (
         // Node must not finish before range starts or start after range
         // finishes.
         return range.intersectsNode(node);
-/*
-        const nodeEndBeforeStart =
-            range.compareBoundaryPoints(END_TO_START, nodeRange) > -1;
-        const nodeStartAfterEnd =
-            range.compareBoundaryPoints(START_TO_END, nodeRange) < 1;
-        return !nodeEndBeforeStart && !nodeStartAfterEnd;
-*/
     } else {
         // Node must start after range starts and finish before range
         // finishes
@@ -84,7 +75,7 @@ const moveRangeBoundariesDownTree = (range: Range): void => {
                     child.nodeName === 'BR' &&
                     !isLineBreak(child as Element, false)
                 ) {
-                    endOffset -= 1;
+                    --endOffset;
                     continue;
                 }
                 break;
@@ -147,7 +138,7 @@ const moveRangeBoundariesUpTree = (
             endContainer.childNodes[endOffset].nodeName === 'BR' &&
             !isLineBreak(endContainer.childNodes[endOffset] as Element, false)
         ) {
-            endOffset += 1;
+            ++endOffset;
         }
         if (endOffset !== getLength(endContainer)) {
             break;

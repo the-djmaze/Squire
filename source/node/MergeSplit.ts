@@ -64,7 +64,7 @@ const fixContainer = (
     root: Element | DocumentFragment,
 ): Node => {
     let wrapper: HTMLElement | null = null;
-    Array.from(container.childNodes).forEach((child) => {
+    [...container.childNodes].forEach((child) => {
         const isBR = child.nodeName === 'BR';
         if (!isBR && isInline(child)) {
             if (!wrapper) {
@@ -87,9 +87,7 @@ const fixContainer = (
             fixContainer(child, root);
         }
     });
-    if (wrapper) {
-        container.append(fixCursor(wrapper));
-    }
+    wrapper && container.append(fixCursor(wrapper));
     return container;
 };
 
@@ -146,7 +144,7 @@ const split = (
     fixCursor(clone);
 
     // Inject clone after original node
-    parent.insertBefore(clone, node.nextSibling);
+    node.after(clone);
 
     // Keep on splitting up the tree
     return split(parent, clone, stopNode, root);
@@ -178,7 +176,7 @@ const _mergeInlines = (
             }
             if (fakeRange.startContainer === node) {
                 if (fakeRange.startOffset > l) {
-                    fakeRange.startOffset -= 1;
+                    --fakeRange.startOffset;
                 } else if (fakeRange.startOffset === l) {
                     fakeRange.startContainer = prev;
                     fakeRange.startOffset = getLength(prev);
@@ -186,7 +184,7 @@ const _mergeInlines = (
             }
             if (fakeRange.endContainer === node) {
                 if (fakeRange.endOffset > l) {
-                    fakeRange.endOffset -= 1;
+                    --fakeRange.endOffset;
                 } else if (fakeRange.endOffset === l) {
                     fakeRange.endContainer = prev;
                     fakeRange.endOffset = getLength(prev);
@@ -247,8 +245,8 @@ const mergeWithBlock = (
     // Remove extra <BR> fixer if present.
     const last = block.lastChild;
     if (last && last.nodeName === 'BR') {
-        block.removeChild(last);
-        offset -= 1;
+        last.remove();
+        --offset;
     }
 
     block.append(empty(next));
@@ -270,23 +268,18 @@ const mergeContainers = (node: Node, root: Element): void => {
 
     if (prev && areAlike(prev, node)) {
         if (!isContainer(prev)) {
-            if (isListItem) {
-                const block = createElement('DIV');
-                block.append(empty(prev));
-                prev.append(block);
-            } else {
+            if (!isListItem) {
                 return;
             }
+            const block = createElement('DIV');
+            block.append(empty(prev));
+            prev.append(block);
         }
         detach(node);
         const needsFix = !isContainer(node);
         prev.append(empty(node));
-        if (needsFix) {
-            fixContainer(prev, root);
-        }
-        if (first) {
-            mergeContainers(first, root);
-        }
+        needsFix && fixContainer(prev, root);
+        first && mergeContainers(first, root);
     } else if (isListItem) {
         const block = createElement('DIV');
         node.insertBefore(block, first);

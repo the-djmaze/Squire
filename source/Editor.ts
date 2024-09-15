@@ -547,7 +547,7 @@ class Squire {
             let endOffset = Array.from(endContainer.childNodes).indexOf(end);
 
             if (startContainer === endContainer) {
-                endOffset -= 1;
+                --endOffset;
             }
 
             start.remove();
@@ -613,10 +613,7 @@ class Squire {
                 range = null;
             }
         }
-        if (!range) {
-            range = createRange(root.firstElementChild || root, 0);
-        }
-        return range;
+        return range || createRange(root.firstElementChild || root, 0);
     }
 
     setSelection(range: Range): Squire {
@@ -857,7 +854,7 @@ class Squire {
             // limit the number of saved undo states.
             // Threshold is in bytes, JS uses 2 bytes per character
             if (replace) {
-                undoIndex -= 1;
+                --undoIndex;
             }
             if (undoThreshold > -1 && html.length * 2 > undoThreshold) {
                 if (undoLimit > -1 && undoIndex > undoLimit) {
@@ -870,16 +867,14 @@ class Squire {
             // Save data
             undoStack[undoIndex] = html;
             this._undoIndex = undoIndex;
-            this._undoStackLength += 1;
+            ++this._undoStackLength;
             this._isInUndoState = true;
         }
         return this;
     }
 
     saveUndoState(range?: Range): Squire {
-        if (!range) {
-            range = this.getSelection();
-        }
+        range || (range = this.getSelection());
         this._recordUndoState(range, this._isInUndoState);
         this._getRangeAndRemoveBookmark(range);
 
@@ -891,7 +886,7 @@ class Squire {
         if (this._undoIndex !== 0 || !this._isInUndoState) {
             // Make sure any changes since last checkpoint are saved.
             this._recordUndoState(this.getSelection(), false);
-            this._undoIndex -= 1;
+            --this._undoIndex;
             this._setRawHTML(this._undoStack[this._undoIndex]);
             const range = this._getRangeAndRemoveBookmark();
             if (range) {
@@ -913,7 +908,7 @@ class Squire {
         const undoIndex = this._undoIndex;
         const undoStackLength = this._undoStackLength;
         if (undoIndex + 1 < undoStackLength && this._isInUndoState) {
-            this._undoIndex += 1;
+            ++this._undoIndex;
             this._setRawHTML(this._undoStack[this._undoIndex]);
             const range = this._getRangeAndRemoveBookmark();
             if (range) {
@@ -1224,7 +1219,7 @@ class Squire {
         }
         openBlock += '>';
 
-        for (let i = 0, l = lines.length; i < l; i += 1) {
+        for (let i = 0, l = lines.length; i < l; ++i) {
             let line = lines[i];
             line = escapeHTML(line).replace(/ (?=(?: |$))/g, '&nbsp;');
             // We don't wrap the first line in the block, so if it gets inserted
@@ -1273,22 +1268,22 @@ class Squire {
                     const color = style.color;
                     if (!fontInfo.color && color) {
                         fontInfo.color = color;
-                        seenAttributes += 1;
+                        ++seenAttributes;
                     }
                     const backgroundColor = style.backgroundColor;
                     if (!fontInfo.backgroundColor && backgroundColor) {
                         fontInfo.backgroundColor = backgroundColor;
-                        seenAttributes += 1;
+                        ++seenAttributes;
                     }
                     const fontFamily = style.fontFamily;
                     if (!fontInfo.fontFamily && fontFamily) {
                         fontInfo.fontFamily = fontFamily;
-                        seenAttributes += 1;
+                        ++seenAttributes;
                     }
                     const fontSize = style.fontSize;
                     if (!fontInfo.fontSize && fontSize) {
                         fontInfo.fontSize = fontSize;
-                        seenAttributes += 1;
+                        ++seenAttributes;
                     }
                 }
                 element = element.parentNode;
@@ -1308,12 +1303,8 @@ class Squire {
     ): boolean {
         // 1. Normalise the arguments and get selection
         tag = tag.toUpperCase();
-        if (!attributes) {
-            attributes = {};
-        }
-        if (!range) {
-            range = this.getSelection();
-        }
+        attributes || (attributes = {});
+        range || (range = this.getSelection());
 
         // Move range up one level in the DOM tree if at the edge of a text
         // node, so we don't consider it included when it's not really.
@@ -1351,9 +1342,9 @@ class Squire {
         // Otherwise, check each text node at least partially contained within
         // the selection and make sure all of them have the format we want.
 //        const walker = new TreeIterator<Text>(common, SHOW_TEXT, (node) => {
-        const walker = createTreeWalker<Text>(common, SHOW_TEXT, (node) => {
-            return isNodeContainedInRange(range!, node, true);
-        });
+        const walker = createTreeWalker<Text>(common, SHOW_TEXT, (node) =>
+            isNodeContainedInRange(range!, node, true)
+        );
 
         let seenNode = false;
         let node: Node | null;
@@ -1496,7 +1487,7 @@ class Squire {
                             endContainer = node;
                             endOffset -= startOffset;
                         } else if (endContainer === startContainer.parentNode) {
-                            endOffset += 1;
+                            ++endOffset;
                         }
                         startContainer = node;
                         startOffset = 0;
@@ -1603,11 +1594,7 @@ class Squire {
             );
         });
 
-        if (!partial) {
-            formatTags.forEach((node: Node) => {
-                examineNode(node, node);
-            });
-        }
+        partial || formatTags.forEach((node: Node) => examineNode(node, node));
 
         // Now wrap unselected nodes in the tag
         toWrap.forEach(([el, node]) => {
@@ -1616,9 +1603,7 @@ class Squire {
             el.append(node);
         });
         // and remove old formatting tags.
-        formatTags.forEach((el: Element) => {
-            replaceWith(el, empty(el));
-        });
+        formatTags.forEach((el: Element) => replaceWith(el, empty(el)));
 
         if (cantFocusEmptyTextNodes && fixer) {
             // Clean up any previous ZWS in this block. They are not needed,
@@ -1629,16 +1614,12 @@ class Squire {
             while (block && isInline(block)) {
                 block = block.parentNode;
             }
-            if (block) {
-                removeZWS(block, fixer);
-            }
+            block && removeZWS(block, fixer);
         }
 
         // Merge adjacent inlines:
         this._getRangeAndRemoveBookmark(range);
-        if (fixer) {
-            range.collapse(false);
-        }
+        fixer && range.collapse(false);
         mergeInlines(root, range);
 
         return range;
@@ -1678,7 +1659,7 @@ class Squire {
             let protocolEnd = url.indexOf(':') + 1;
             if (protocolEnd) {
                 while (url[protocolEnd] === '/') {
-                    protocolEnd += 1;
+                    ++protocolEnd;
                 }
             }
             insertNodeInRange(
@@ -2372,14 +2353,14 @@ class Squire {
             const lists = frag.querySelectorAll('UL, OL');
             const items = frag.querySelectorAll('LI');
             const root = this._root;
-            for (let i = 0, l = lists.length; i < l; i += 1) {
+            for (let i = 0, l = lists.length; i < l; ++i) {
                 const list = lists[i];
                 const listFrag = empty(list);
                 fixContainer(listFrag, root);
                 replaceWith(list, listFrag);
             }
 
-            for (let i = 0, l = items.length; i < l; i += 1) {
+            for (let i = 0, l = items.length; i < l; ++i) {
                 const item = items[i];
                 if (isBlock(item)) {
                     replaceWith(item, this.createDefaultBlock([empty(item)]));
@@ -2474,7 +2455,7 @@ class Squire {
                     // will be at the end of a block and therefore seem to not
                     // be a line break. But in its original context it was, so
                     // we should also convert it to a block split.
-                    for (let i = 0; i < l; i += 1) {
+                    for (let i = 0; i < l; ++i) {
                         brBreaksLine[i] = isLineBreak(nodes[i], false);
                     }
                     while (l--) {

@@ -110,7 +110,7 @@ const replaceWithTag = (tag: string) => {
     return (node: HTMLElement, parent: Node) => {
         const el = createElement(tag);
         const attributes = node.attributes;
-        for (let i = 0, l = attributes.length; i < l; i += 1) {
+        for (let i = 0, l = attributes.length; i < l; ++i) {
             const attribute = attributes[i];
             el.setAttribute(attribute.name, attribute.value);
         }
@@ -325,7 +325,7 @@ const cleanupBRs = (
     // to a block split, the second will be at the end of a block and
     // therefore seem to not be a line break. But in its original context it
     // was, so we should also convert it to a block split.
-    for (let i = 0; i < l; i += 1) {
+    for (let i = 0; i < l; ++i) {
         brBreaksLine[i] = isLineBreak(brs[i], keepForBlankLine);
     }
     while (l--) {

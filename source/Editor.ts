@@ -1466,7 +1466,7 @@ class Squire {
             if (
                 (!(startContainer instanceof Element) &&
                     !(startContainer instanceof Text)) ||
-                !walker.filter.acceptNode(startContainer)
+                NodeFilter.FILTER_ACCEPT !== walker.filter.acceptNode(startContainer)
             ) {
                 const next = walker.nextNode();
                 // If there are no interesting nodes in the selection, abort

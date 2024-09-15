@@ -121,13 +121,15 @@ const replaceWithTag = (tag: string) => {
 };
 
 const fontSizes: Record<string, string> = {
-    '1': '10',
-    '2': '13',
-    '3': '16',
-    '4': '18',
-    '5': '24',
-    '6': '32',
-    '7': '48',
+    "1": "x-small",
+    "2": "small",
+    "3": "medium",
+    "4": "large",
+    "5": "x-large",
+    "6": "xx-large",
+    "7": "xxx-large",
+    "-1": "smaller",
+    "+1": "larger"
 };
 
 const stylesRewriters: Record<string, StyleRewriter> = {
@@ -145,62 +147,31 @@ const stylesRewriters: Record<string, StyleRewriter> = {
         const face = font.face;
         const size = font.size;
         let color = font.color;
-        const classNames = config.classNames;
-        let fontSpan: HTMLElement;
-        let sizeSpan: HTMLElement;
-        let colorSpan: HTMLElement;
-        let newTreeBottom: HTMLElement | undefined;
-        let newTreeTop: HTMLElement | undefined;
+        let newTag = createElement("SPAN");
+        let css = newTag.style;
+        newTag.style.cssText = node.style.cssText;
         if (face) {
-            fontSpan = createElement('SPAN', {
-                class: classNames.fontFamily,
-                style: 'font-family:' + face,
-            });
-            newTreeTop = fontSpan;
-            newTreeBottom = fontSpan;
+            css.fontFamily = face;
         }
         if (size) {
-            sizeSpan = createElement('SPAN', {
-                class: classNames.fontSize,
-                style: 'font-size:' + fontSizes[size] + 'px',
-            });
-            if (!newTreeTop) {
-                newTreeTop = sizeSpan;
-            }
-            if (newTreeBottom) {
-                newTreeBottom.append(sizeSpan);
-            }
-            newTreeBottom = sizeSpan;
+            css.fontSize = fontSizes[size];
         }
         if (color && /^#?([\dA-F]{3}){1,2}$/i.test(color)) {
-            if (color.charAt(0) !== '#') {
-                color = '#' + color;
+            if (color.charAt(0) !== "#") {
+                color = "#" + color;
             }
-            colorSpan = createElement('SPAN', {
-                class: classNames.color,
-                style: 'color:' + color,
-            });
-            if (!newTreeTop) {
-                newTreeTop = colorSpan;
-            }
-            if (newTreeBottom) {
-                newTreeBottom.append(colorSpan);
-            }
-            newTreeBottom = colorSpan;
+            css.color = color;
         }
-        if (!newTreeTop || !newTreeBottom) {
-            newTreeTop = newTreeBottom = createElement('SPAN');
-        }
-        parent.replaceChild(newTreeTop, font);
-        newTreeBottom.append(empty(font));
-        return newTreeBottom;
+        replaceWith(node, newTag);
+        newTag.append(empty(node));
+        return newTag;
     },
     TT: (node: Node, parent: Node, config: SquireConfig): HTMLElement => {
         const el = createElement('SPAN', {
             class: config.classNames.fontFamily,
             style: 'font-family:menlo,consolas,"courier new",monospace',
         });
-        parent.replaceChild(el, node);
+        replaceWith(node, el);
         el.append(empty(node));
         return el;
     },

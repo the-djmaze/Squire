@@ -12,6 +12,7 @@ import {
     hasTagAttributes,
     replaceWith,
     getClosest,
+    setAttributes,
 } from './node/Node';
 import {
     isLeaf,

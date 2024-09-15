@@ -13,12 +13,7 @@ const createElement = (
         props = null;
     }
     if (props) {
-        for (const attr in props) {
-            const value = props[attr];
-            if (value !== undefined) {
-                el.setAttribute(attr, value);
-            }
-        }
+        setAttributes(el, props);
     }
     if (children) {
         children.forEach((node) => el.append(node));
@@ -156,6 +151,18 @@ const getClosest = (node, root, selector) => {
     return (node && root.contains(node)) ? node : null;
 };
 
+const setAttributes = (node, props) => {
+    props && Object.entries(props).forEach(([k, v]) => {
+        if (null == v) {
+            node.removeAttribute(k);
+        } else if ("style" === k && typeof v === "object") {
+            Object.entries(v).forEach(([k2, v2]) => node.style[k2] = v2);
+        } else {
+            node.setAttribute(k, v);
+        }
+    });
+};
+
 // --- Export
 
 export {
@@ -170,4 +177,5 @@ export {
     hasTagAttributes,
     replaceWith,
     getClosest,
+    setAttributes,
 };

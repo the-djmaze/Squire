@@ -2,6 +2,7 @@ import { ZWS, notWS } from '../Constants';
 import { isInline } from './Category';
 import { getLength } from './Node';
 import { SHOW_ELEMENT_OR_TEXT, SHOW_TEXT, TreeIterator } from './TreeIterator';
+import { createTreeWalker } from './TreeWalker';
 
 // ---
 
@@ -17,7 +18,8 @@ const isLineBreak = (br: Element, isLBIfEmptyBlock: boolean): boolean => {
     while (isInline(block)) {
         block = block.parentNode!;
     }
-    const walker = new TreeIterator<Element | Text>(
+//    const walker = new TreeIterator<Element | Text>(
+    const walker = createTreeWalker<Element | Text>(
         block,
         SHOW_ELEMENT_OR_TEXT,
         notWSTextNode,
@@ -35,7 +37,8 @@ const isLineBreak = (br: Element, isLBIfEmptyBlock: boolean): boolean => {
 // the bottom of the tree so the block can be selected. Define that node as the
 // keepNode.
 const removeZWS = (root: Node, keepNode?: Node | null): void => {
-    const walker = new TreeIterator<Text>(root, SHOW_TEXT);
+//    const walker = new TreeIterator<Text>(root, SHOW_TEXT);
+    const walker = createTreeWalker<Text>(root, SHOW_TEXT);
     let textNode: Text | null;
     let index: number;
     while ((textNode = walker.nextNode())) {

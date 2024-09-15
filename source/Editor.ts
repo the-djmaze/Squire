@@ -3,6 +3,7 @@ import {
     SHOW_TEXT,
     SHOW_ELEMENT_OR_TEXT,
 } from './node/TreeIterator';
+import { createTreeWalker } from './node/TreeWalker';
 import {
     createElement,
     detach,
@@ -1348,7 +1349,8 @@ class Squire {
 
         // Otherwise, check each text node at least partially contained within
         // the selection and make sure all of them have the format we want.
-        const walker = new TreeIterator<Text>(common, SHOW_TEXT, (node) => {
+//        const walker = new TreeIterator<Text>(common, SHOW_TEXT, (node) => {
+        const walker = createTreeWalker<Text>(common, SHOW_TEXT, (node) => {
             return isNodeContainedInRange(range!, node, true);
         });
 
@@ -1440,7 +1442,8 @@ class Squire {
             //
             // IMG tags are included because we may want to create a link around
             // them, and adding other styles is harmless.
-            const walker = new TreeIterator<Element | Text>(
+//            const walker = new TreeIterator<Element | Text>(
+            const walker = createTreeWalker<Element | Text>(
                 range.commonAncestorContainer,
                 SHOW_ELEMENT_OR_TEXT,
                 (node: Node) => {
@@ -1771,7 +1774,8 @@ class Squire {
         searchInNode: DocumentFragment | Node,
         root?: DocumentFragment | HTMLElement,
     ): Squire {
-        const walker = new TreeIterator<Text>(
+//        const walker = new TreeIterator<Text>(
+        const walker = createTreeWalker<Text>(
             searchInNode,
             SHOW_TEXT,
             (node) => !getClosest(node, root || this._root, 'A'),
@@ -2492,7 +2496,8 @@ class Squire {
                     output.append(empty(node));
                 }
                 // 4. Replace nbsp with regular sp
-                const textWalker = new TreeIterator<Text>(output, SHOW_TEXT);
+//                const textWalker = new TreeIterator<Text>(output, SHOW_TEXT);
+                const textWalker = createTreeWalker<Text>(output, SHOW_TEXT);
                 while ((node = textWalker.nextNode())) {
                     // eslint-disable-next-line no-irregular-whitespace
                     node.data = node.data.replace(/ /g, ' '); // nbsp -> sp
@@ -2529,7 +2534,8 @@ class Squire {
                 let l = pres.length;
                 while (l--) {
                     const pre = pres[l];
-                    const walker = new TreeIterator<Text>(pre, SHOW_TEXT);
+//                    const walker = new TreeIterator<Text>(pre, SHOW_TEXT);
+                    const walker = createTreeWalker<Text>(pre, SHOW_TEXT);
                     let node: Text | null;
                     while ((node = walker.nextNode())) {
                         let value = node.data;

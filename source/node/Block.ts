@@ -1,4 +1,5 @@
 import { TreeIterator, SHOW_ELEMENT } from './TreeIterator';
+import { createTreeWalker } from './TreeWalker';
 import { isBlock } from './Category';
 
 // ---
@@ -6,8 +7,10 @@ import { isBlock } from './Category';
 const getBlockWalker = (
     node: Node,
     root: Element | DocumentFragment,
-): TreeIterator<HTMLElement> => {
-    const walker = new TreeIterator<HTMLElement>(root, SHOW_ELEMENT, isBlock);
+//): TreeIterator<HTMLElement> => {
+): TreeWalker<HTMLElement> => {
+//    const walker = new TreeIterator<HTMLElement>(root, SHOW_ELEMENT, isBlock);
+    const walker = createTreeWalker<HTMLElement>(root, SHOW_ELEMENT, isBlock);
     walker.currentNode = node;
     return walker;
 };

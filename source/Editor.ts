@@ -934,6 +934,16 @@ class Squire {
     }
 
     _setRawHTML(html: string): Squire {
+        if (html !== undefined) {
+            const root = this._root;
+            let node = root;
+            root.innerHTML = html;
+            do {
+                fixCursor(node);
+            } while (node = getNextBlock(node, root));
+            this._ignoreChange = true;
+        }
+/*
         const root = this._root;
         root.innerHTML = html;
 
@@ -953,7 +963,7 @@ class Squire {
         }
 
         this._ignoreChange = true;
-
+*/
         return this;
     }
 

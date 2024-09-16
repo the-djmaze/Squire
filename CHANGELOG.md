@@ -35,6 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 -   isNodeContainedInRange() use Range.intersectsNode() for partial match
 -   Faster cleanTree()
 -   Cleaner stylesRewriters handling
+-   Reduced code footprint by using es2020
 
 ### Removed
 -   isGecko, not used anymore

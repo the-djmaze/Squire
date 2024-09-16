@@ -66,26 +66,21 @@ const fixContainer = (
     let wrapper: HTMLElement | null = null;
     [...container.childNodes].forEach((child) => {
         const isBR = child.nodeName === 'BR';
-        if (!isBR && isInline(child)) {
-            if (!wrapper) {
-                wrapper = createElement('DIV');
-            }
+        if (!isBR && child.parentNode == root && isInline(child)) {
+            wrapper || (wrapper = createElement('DIV'));
             wrapper.append(child);
         } else if (isBR || wrapper) {
-            if (!wrapper) {
-                wrapper = createElement('DIV');
-            }
+            wrapper || (wrapper = createElement('DIV'));
             fixCursor(wrapper);
             if (isBR) {
-                container.replaceChild(wrapper, child);
+                child.replaceWith(wrapper);
             } else {
+//                child.before(wrapper);
                 container.insertBefore(wrapper, child);
             }
             wrapper = null;
         }
-        if (isContainer(child)) {
-            fixContainer(child, root);
-        }
+        isContainer(child) && fixContainer(child, root);
     });
     wrapper && container.append(fixCursor(wrapper));
     return container;

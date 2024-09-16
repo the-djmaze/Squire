@@ -231,10 +231,6 @@ const cleanTree = (
             if (child instanceof Text && !preserveWS) {
                 let data = child.data;
                 const startsWithWS = !notWS.test(data.charAt(0));
-                const endsWithWS = !notWS.test(data.charAt(data.length - 1));
-                if (!startsWithWS && !endsWithWS) {
-                    continue;
-                }
                 // Iterate through the nodes; if we hit some other content
                 // before the start of a new block we don't trim
                 if (startsWithWS) {
@@ -253,7 +249,12 @@ const cleanTree = (
                             break;
                         }
                     }
+//                    data = (sibling ? ' ' : '') + data.trimStart();
                     data = data.replace(/^[ \t\r\n]+/g, sibling ? ' ' : '');
+                }
+                const endsWithWS = !notWS.test(data.charAt(data.length - 1));
+                if (!startsWithWS && !endsWithWS) {
+                    continue;
                 }
                 if (endsWithWS) {
                     walker.currentNode = child;
@@ -271,6 +272,7 @@ const cleanTree = (
                             break;
                         }
                     }
+//                    data = data.trimEnd()() + (sibling ? ' ' : '');
                     data = data.replace(/[ \t\r\n]+$/g, sibling ? ' ' : '');
                 }
                 if (data) {

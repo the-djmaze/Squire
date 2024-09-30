@@ -77,7 +77,6 @@ type TagAttributes = {
 
 interface SquireConfig {
     blockTag: string;
-    blockAttributes: null | Record<string, string>;
     tagAttributes: TagAttributes;
     classNames: {
         color: string;
@@ -215,7 +214,6 @@ class Squire {
     _makeConfig(userConfig?: object): SquireConfig {
         const config = {
             blockTag: 'DIV',
-            blockAttributes: null,
             tagAttributes: {},
             classNames: {
                 color: 'color',
@@ -1220,14 +1218,8 @@ class Squire {
         const lines = plainText.split('\n');
         const config = this._config;
         const tag = config.blockTag;
-        const attributes = config.blockAttributes;
         const closeBlock = '</' + tag + '>';
-        let openBlock = '<' + tag;
-
-        for (const attr in attributes) {
-            openBlock += ' ' + attr + '="' + escapeHTML(attributes[attr]) + '"';
-        }
-        openBlock += '>';
+        const openBlock = '<' + tag + '>';
 
         for (let i = 0, l = lines.length; i < l; ++i) {
             let line = lines[i];
@@ -1826,7 +1818,7 @@ class Squire {
     createDefaultBlock(children?: Node[]): HTMLElement {
         const config = this._config;
         return fixCursor(
-            createElement(config.blockTag, config.blockAttributes, children),
+            createElement(config.blockTag, null, children),
         ) as HTMLElement;
     }
 
@@ -1961,7 +1953,7 @@ class Squire {
         // Otherwise, split at cursor point.
         node = range.startContainer;
         const offset = range.startOffset;
-        let splitTag = this.tagAfterSplit[block.nodeName];
+        let splitTag = this.tagAfterSplit[block.nodeName] || this._config.blockTag;
         nodeAfterSplit = split(
             node,
             offset,
@@ -1969,16 +1961,9 @@ class Squire {
             this._root,
         ) as Node;
 
-        const config = this._config;
-        let splitProperties: Record<string, string> | null = null;
-        if (!splitTag) {
-            splitTag = config.blockTag;
-            splitProperties = config.blockAttributes;
-        }
-
         // Make sure the new node is the correct type.
-        if (!hasTagAttributes(nodeAfterSplit, splitTag, splitProperties)) {
-            block = createElement(splitTag, splitProperties);
+        if (!hasTagAttributes(nodeAfterSplit, splitTag)) {
+            block = createElement(splitTag);
             if ((nodeAfterSplit as HTMLElement).dir) {
                 (block as HTMLElement).dir = (
                     nodeAfterSplit as HTMLElement

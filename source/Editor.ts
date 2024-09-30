@@ -71,13 +71,8 @@ type EventHandler = { handleEvent: (e: Event) => void } | ((e: Event) => void);
 
 type KeyHandlerFunction = (x: Squire, y: KeyboardEvent, z: Range) => void;
 
-type TagAttributes = {
-    [key: string]: { [key: string]: string };
-};
-
 interface SquireConfig {
     blockTag: string;
-    tagAttributes: TagAttributes;
     classNames: {
         color: string;
         fontFamily: string;
@@ -214,7 +209,6 @@ class Squire {
     _makeConfig(userConfig?: object): SquireConfig {
         const config = {
             blockTag: 'DIV',
-            tagAttributes: {},
             classNames: {
                 color: 'color',
                 fontFamily: 'font',
@@ -1673,7 +1667,6 @@ class Squire {
             {
                 href: url,
             },
-            this._config.tagAttributes.a,
             attributes,
         );
 
@@ -1765,7 +1758,6 @@ class Squire {
             (node) => !getClosest(node, root || this._root, 'A'),
         );
         const linkRegExp = this.linkRegExp;
-        const defaultAttributes = this._config.tagAttributes.a;
         let node: Text | null;
         while ((node = walker.nextNode())) {
             const parent = node.parentNode!;
@@ -1782,16 +1774,13 @@ class Squire {
                 }
                 const child = createElement(
                     'A',
-                    Object.assign(
-                        {
-                            href: match[1]
-                                ? /^(?:ht|f)tps?:/i.test(match[1])
-                                    ? match[1]
-                                    : 'http://' + match[1]
-                                : 'mailto:' + match[0],
-                        },
-                        defaultAttributes,
-                    ),
+                    {
+                        href: match[1]
+                            ? /^(?:ht|f)tps?:/i.test(match[1])
+                                ? match[1]
+                                : 'http://' + match[1]
+                            : 'mailto:' + match[0],
+                    },
                 );
                 child.textContent = data.slice(index, endIndex);
                 parent.insertBefore(child, node);
@@ -2196,11 +2185,9 @@ class Squire {
         // Increase list depth
         const type = list.nodeName;
         let newParent = startLi.previousSibling!;
-        let listAttrs: Record<string, string> | null;
         let next: Node | null;
         if (newParent.nodeName !== type) {
-            listAttrs = this._config.tagAttributes[type.toLowerCase()];
-            newParent = createElement(type, listAttrs);
+            newParent = createElement(type);
             list.insertBefore(newParent, startLi);
         }
         do {
@@ -2293,9 +2280,6 @@ class Squire {
 
     _makeList(frag: DocumentFragment, type: string): DocumentFragment {
         const walker = getBlockWalker(frag, this._root);
-        const tagAttributes = this._config.tagAttributes;
-        const listAttrs = tagAttributes[type.toLowerCase()];
-        const listItemAttrs = tagAttributes.li;
         let node: Node | null;
         while ((node = walker.nextNode())) {
             if (node.parentNode! instanceof HTMLLIElement) {
@@ -2303,7 +2287,7 @@ class Squire {
                 walker.currentNode = node.lastChild!;
             }
             if (!(node instanceof HTMLLIElement)) {
-                const newLi = createElement('LI', listItemAttrs);
+                const newLi = createElement('LI');
                 if ((node as HTMLElement).dir) {
                     newLi.dir = (node as HTMLElement).dir;
                 }
@@ -2315,7 +2299,7 @@ class Squire {
                     detach(node);
                     // Otherwise, replace this block with the <ul>/<ol>
                 } else {
-                    replaceWith(node, createElement(type, listAttrs, [newLi]));
+                    replaceWith(node, createElement(type, null, [newLi]));
                 }
                 newLi.append(empty(node));
                 walker.currentNode = newLi;
@@ -2325,7 +2309,7 @@ class Squire {
                 if (tag !== type && /^[OU]L$/.test(tag)) {
                     replaceWith(
                         node!,
-                        createElement(type, listAttrs, [empty(node!)]),
+                        createElement(type, null, [empty(node!)]),
                     );
                 }
             }
@@ -2376,7 +2360,7 @@ class Squire {
             (frag) =>
                 createElement(
                     'BLOCKQUOTE',
-                    this._config.tagAttributes.blockquote,
+                    null,
                     [frag],
                 ),
             range,
@@ -2481,7 +2465,7 @@ class Squire {
                 }
                 output.normalize();
                 return fixCursor(
-                    createElement('PRE', this._config.tagAttributes.pre, [
+                    createElement('PRE', null, [
                         output,
                     ]),
                 );
@@ -2491,7 +2475,7 @@ class Squire {
             this.changeFormat(
                 {
                     tag: 'CODE',
-                    attributes: this._config.tagAttributes.code,
+                    attributes: null,
                 },
                 null,
                 range,

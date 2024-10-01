@@ -13,76 +13,39 @@ import { isInline, isContainer } from './Category';
 
 const fixCursor = (node: Node): Node => {
     // In Webkit and Gecko, block level elements are collapsed and
-    // unfocusable if they have no content. To remedy this, a <BR> must be
-    // inserted. In Opera and IE, we just need a textnode in order for the
-    // cursor to appear.
-    let fixer: Element | Text | null = null;
-
-    if (node instanceof Text) {
-        return node;
-    }
-
-    if (isInline(node)) {
-        let child = node.firstChild;
-        if (cantFocusEmptyTextNodes) {
-            while (child && child instanceof Text && !child.data) {
-                node.removeChild(child);
-                child = node.firstChild;
-            }
-        }
-        if (!child) {
-            if (cantFocusEmptyTextNodes) {
-                fixer = document.createTextNode(ZWS);
-            } else {
-                fixer = document.createTextNode('');
-            }
-        }
-    } else if (
+    // unfocusable if they have no content.
+    // Webkit can use CSS :empty::before{content:'\200B'},
+    // but the Enter key should do a BR, yet it does splitBlock(),
+    // so just add the <BR> in every browser.
+    if (
         (node instanceof Element || node instanceof DocumentFragment) &&
-        !node.querySelector('BR')
+        !isInline(node) &&
+        !node.children.length && !node.textContent.length
     ) {
-        fixer = createElement('BR');
-        let parent: Element | DocumentFragment = node;
-        let child: Element | null;
-        while ((child = parent.lastElementChild) && !isInline(child)) {
-            parent = child;
-        }
-        node = parent;
-    }
-    if (fixer) {
-        try {
-            node.appendChild(fixer);
-        } catch (error) {}
+        node.appendChild(createElement('BR'));
     }
 
     return node;
 };
 
-// Recursively examine container nodes and wrap any inline children.
+// Examine container nodes and wrap any inline children.
+// This should only be needed on the root node
 const fixContainer = (
     container: Node,
     root: Element | DocumentFragment,
 ): Node => {
     let wrapper: HTMLElement | null = null;
     [...container.childNodes].forEach((child) => {
-        const isBR = child.nodeName === 'BR';
-        if (!isBR && child.parentNode == root && isInline(child)) {
+        if (isInline(child)) {
             wrapper || (wrapper = createElement('DIV'));
             wrapper.append(child);
-        } else if (isBR || wrapper) {
-            wrapper || (wrapper = createElement('DIV'));
-            fixCursor(wrapper);
-            if (isBR) {
-                child.replaceWith(wrapper);
-            } else {
-//                child.before(wrapper);
-                container.insertBefore(wrapper, child);
-            }
+        } else if (wrapper) {
+            (wrapper.children.length || wrapper.textContent.trim().length)
+            && container.insertBefore(wrapper, child);
             wrapper = null;
         }
-        isContainer(child) && fixContainer(child, root);
     });
-    wrapper && container.append(fixCursor(wrapper));
+    wrapper && container.append(wrapper);
     return container;
 };
 

@@ -305,7 +305,7 @@ const insertTreeFragmentIntoRange = (
     let node: Node | null;
 
     // Fixup content: ensure no top-level inline, and add cursor fix elements.
-    fixContainer(frag, root);
+    fixContainer(frag);
     node = frag;
     while ((node = getNextBlock(node, root))) {
         fixCursor(node);
@@ -351,7 +351,7 @@ const insertTreeFragmentIntoRange = (
         let offset = range.endOffset;
         // Remove trailing <br> – we don't want this considered content to be
         // inserted again later
-        cleanupBRs(block as HTMLElement, root, false);
+        cleanupBRs(block as HTMLElement);
         if (isInline(container)) {
             // Split up to block parent.
             const nodeAfterSplit = split(

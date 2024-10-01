@@ -979,8 +979,8 @@ class Squire {
 
         // Fixup DOM tree
         cleanTree(frag, this._config);
-        cleanupBRs(frag, root, false);
-        fixContainer(frag, root);
+        cleanupBRs(frag);
+        fixContainer(frag);
 
         // Fix cursor
         let node: DocumentFragment | HTMLElement | null = frag;
@@ -1047,7 +1047,7 @@ class Squire {
                 this.addDetectedLinks(frag, frag);
             }
             cleanTree(frag, this._config);
-            cleanupBRs(frag, root, false);
+            cleanupBRs(frag);
             removeEmptyInlines(frag);
             frag.normalize();
 
@@ -2335,7 +2335,7 @@ class Squire {
             for (let i = 0, l = lists.length; i < l; ++i) {
                 const list = lists[i];
                 const listFrag = empty(list);
-                fixContainer(listFrag, root);
+                fixContainer(listFrag);
                 replaceWith(list, listFrag);
             }
 
@@ -2344,7 +2344,7 @@ class Squire {
                 if (isBlock(item)) {
                     replaceWith(item, this.createDefaultBlock([empty(item)]));
                 } else {
-                    fixContainer(item, root);
+                    fixContainer(item);
                     replaceWith(item, empty(item));
                 }
             }
@@ -2513,7 +2513,7 @@ class Squire {
                         node.parentNode!.insertBefore(contents, node);
                         node.data = value;
                     }
-                    fixContainer(pre, root);
+                    fixContainer(pre);
                     replaceWith(pre, empty(pre));
                 }
                 return frag;

@@ -315,8 +315,6 @@ const removeEmptyInlines = (node: Node): void => {
 // fixCursor method call.
 const cleanupBRs = (
     node: Element | DocumentFragment,
-    root: Element,
-    keepForBlankLine: boolean,
 ): void => {
     const brs: NodeListOf<HTMLBRElement> = node.querySelectorAll('BR');
     const brBreaksLine: boolean[] = [];
@@ -328,23 +326,24 @@ const cleanupBRs = (
     // therefore seem to not be a line break. But in its original context it
     // was, so we should also convert it to a block split.
     for (let i = 0; i < l; ++i) {
-        brBreaksLine[i] = isLineBreak(brs[i], keepForBlankLine);
+        brBreaksLine[i] = isLineBreak(brs[i], false);
     }
     while (l--) {
         const br = brs[l];
         // Cleanup may have removed it
         const parent = br.parentNode;
-        if (!parent) {
-            continue;
-        }
-        // If it doesn't break a line, just remove it; it's not doing
-        // anything useful. We'll add it back later if required by the
-        // browser. If it breaks a line, wrap the content in div tags
-        // and replace the brs.
-        if (!brBreaksLine[l]) {
-            detach(br);
-//        } else if (!isInline(parent)) {
-//            fixContainer(parent, root);
+        if (parent) {
+//            const prev = br.previousSibling; // br.previousElementSibling;
+//            (prev && parent.lastChild === br && prev.nodeName !== 'BR')
+            // If it doesn't break a line, just remove it; it's not doing
+            // anything useful. We'll add it back later if required by the
+            // browser. If it breaks a line, wrap the content in div tags
+            // and replace the brs.
+            if (!brBreaksLine[l]) {
+                detach(br);
+//            } else if (!isInline(parent)) {
+//                fixContainer(parent);
+            }
         }
     }
 };
@@ -365,4 +364,4 @@ const escapeHTML = (text: string): string => {
 
 // ---
 
-export { cleanTree, cleanupBRs, isLineBreak, removeEmptyInlines, escapeHTML };
+export { cleanTree, cleanupBRs, removeEmptyInlines, escapeHTML };

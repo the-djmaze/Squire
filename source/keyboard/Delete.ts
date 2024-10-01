@@ -44,7 +44,7 @@ const Delete = (self: Squire, event: KeyboardEvent, range: Range): void => {
             return;
         }
         // In case inline data has somehow got between blocks.
-        fixContainer(current.parentNode!, root);
+        fixContainer(current.parentNode!);
         // Now get next block
         next = getNextBlock(current, root);
         // Must not be at the very end of the text area.

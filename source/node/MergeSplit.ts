@@ -32,7 +32,6 @@ const fixCursor = (node: Node): Node => {
 // This should only be needed on the root node
 const fixContainer = (
     container: Node,
-    root: Element | DocumentFragment,
 ): Node => {
     let wrapper: HTMLElement | null = null;
     [...container.childNodes].forEach((child) => {
@@ -236,7 +235,7 @@ const mergeContainers = (node: Node, root: Element): void => {
         detach(node);
         const needsFix = !isContainer(node);
         prev.append(empty(node));
-        needsFix && fixContainer(prev, root);
+        needsFix && fixContainer(prev);
         first && mergeContainers(first, root);
     } else if (isListItem) {
         const block = createElement('DIV');

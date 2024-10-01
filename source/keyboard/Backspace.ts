@@ -35,7 +35,7 @@ const Backspace = (self: Squire, event: KeyboardEvent, range: Range): void => {
         }
         let current = startBlock;
         // In case inline data has somehow got between blocks.
-        fixContainer(current.parentNode!, root);
+        fixContainer(current.parentNode!);
         // Now get previous block
         const previous = getPreviousBlock(current, root);
         // Must not be at the very beginning of the text area.

@@ -343,8 +343,8 @@ const cleanupBRs = (
         // and replace the brs.
         if (!brBreaksLine[l]) {
             detach(br);
-        } else if (!isInline(parent)) {
-            fixContainer(parent, root);
+//        } else if (!isInline(parent)) {
+//            fixContainer(parent, root);
         }
     }
 };

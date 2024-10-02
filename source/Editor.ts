@@ -1989,7 +1989,7 @@ class Squire {
                 break;
             }
 
-            while (child && child instanceof Text && !child.data) {
+            while (child && child instanceof Text && !child.length) {
                 next = child.nextSibling;
                 if (!next || next.nodeName === 'BR') {
                     break;

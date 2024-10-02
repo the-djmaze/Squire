@@ -234,7 +234,7 @@ const deleteContentsOfRange = (
     // Find the character after cursor point
     let afterNode: Node | null = startContainer;
     let afterOffset = startOffset;
-    if (!(afterNode instanceof Text) || afterOffset === afterNode.data.length) {
+    if (!(afterNode instanceof Text) || afterOffset === afterNode.length) {
         afterNode = getAdjacentInlineNode(iterator, 'nextNode', afterNode);
         afterOffset = 0;
     }
@@ -252,7 +252,7 @@ const deleteContentsOfRange = (
                     : startContainer.childNodes[startOffset] || startContainer),
         );
         if (beforeNode instanceof Text) {
-            beforeOffset = beforeNode.data.length;
+            beforeOffset = beforeNode.length;
         }
     }
 

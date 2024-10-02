@@ -299,7 +299,7 @@ const removeEmptyInlines = (node: Node): void => {
             if (isInline(child) && !child.firstChild) {
                 node.removeChild(child);
             }
-        } else if (child instanceof Text && !child.data) {
+        } else if (child instanceof Text && !child.length) {
             node.removeChild(child);
         }
     }

@@ -58,7 +58,7 @@ const moveRangeBoundariesDownTree = (range: Range): void => {
                         textChild = prev;
                     }
                     startContainer = textChild;
-                    startOffset = textChild.data.length;
+                    startOffset = textChild.length;
                 }
             }
             break;

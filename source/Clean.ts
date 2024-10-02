@@ -316,34 +316,19 @@ const removeEmptyInlines = (node: Node): void => {
 const cleanupBRs = (
     node: Element | DocumentFragment,
 ): void => {
-    const brs: NodeListOf<HTMLBRElement> = node.querySelectorAll('BR');
-    const brBreaksLine: boolean[] = [];
+    const brs: NodeListOf<HTMLBRElement> = node.querySelectorAll('BR:last-child');
     let l = brs.length;
-
-    // Must calculate whether the <br> breaks a line first, because if we
-    // have two <br>s next to each other, after the first one is converted
-    // to a block split, the second will be at the end of a block and
-    // therefore seem to not be a line break. But in its original context it
-    // was, so we should also convert it to a block split.
-    for (let i = 0; i < l; ++i) {
-        brBreaksLine[i] = isLineBreak(brs[i]);
-    }
     while (l--) {
         const br = brs[l];
-        // Cleanup may have removed it
-        const parent = br.parentNode;
-        if (parent) {
-//            const prev = br.previousSibling; // br.previousElementSibling;
-//            (prev && parent.lastChild === br && prev.nodeName !== 'BR')
-            // If it doesn't break a line, just remove it; it's not doing
-            // anything useful. We'll add it back later if required by the
-            // browser. If it breaks a line, wrap the content in div tags
-            // and replace the brs.
-            if (!brBreaksLine[l]) {
-                detach(br);
-//            } else if (!isInline(parent)) {
-//                fixContainer(parent);
-            }
+        // TODO: if there are more BR at the end of a block, it creates empty lines
+        // Example: <br></div> does nothing, <br><br></div> does create empty line
+//        const prev = br.previousSibling; // br.previousElementSibling;
+//        (prev && br.parentNode?.lastChild === br && prev.nodeName !== 'BR')
+        // If it doesn't break a line, just remove it; it's not doing
+        // anything useful. We'll add it back later if required by the
+        // browser.
+        if (!isLineBreak(br)) {
+            br.remove();
         }
     }
 };

@@ -352,14 +352,10 @@ const cleanupBRs = (
 
 const escapeHTML = (text: string): string => {
     return text
-        .split('&')
-        .join('&amp;')
-        .split('<')
-        .join('&lt;')
-        .split('>')
-        .join('&gt;')
-        .split('"')
-        .join('&quot;');
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;');
 };
 
 // ---

@@ -73,7 +73,7 @@ const moveRangeBoundariesDownTree = (range: Range): void => {
                 if (
                     child &&
                     child.nodeName === 'BR' &&
-                    !isLineBreak(child as Element, false)
+                    !isLineBreak(child as Element)
                 ) {
                     --endOffset;
                     continue;
@@ -136,7 +136,7 @@ const moveRangeBoundariesUpTree = (
             endContainer.nodeType !== TEXT_NODE &&
             endContainer.childNodes[endOffset] &&
             endContainer.childNodes[endOffset].nodeName === 'BR' &&
-            !isLineBreak(endContainer.childNodes[endOffset] as Element, false)
+            !isLineBreak(endContainer.childNodes[endOffset] as Element)
         ) {
             ++endOffset;
         }

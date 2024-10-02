@@ -326,7 +326,7 @@ const cleanupBRs = (
     // therefore seem to not be a line break. But in its original context it
     // was, so we should also convert it to a block split.
     for (let i = 0; i < l; ++i) {
-        brBreaksLine[i] = isLineBreak(brs[i], false);
+        brBreaksLine[i] = isLineBreak(brs[i]);
     }
     while (l--) {
         const br = brs[l];

@@ -2435,7 +2435,7 @@ class Squire {
                     // be a line break. But in its original context it was, so
                     // we should also convert it to a block split.
                     for (let i = 0; i < l; ++i) {
-                        brBreaksLine[i] = isLineBreak(nodes[i], false);
+                        brBreaksLine[i] = isLineBreak(nodes[i]);
                     }
                     while (l--) {
                         const br = nodes[l];

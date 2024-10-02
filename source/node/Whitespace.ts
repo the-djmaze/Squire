@@ -12,7 +12,7 @@ const notWSTextNode = (node: Node): boolean =>
         : // okay if data is 'undefined' here.
           notWS.test((node as CharacterData).data);
 
-const isLineBreak = (br: Element, isLBIfEmptyBlock: boolean): boolean => {
+const isLineBreak = (br: Element): boolean => {
     let block = br.parentNode!;
     while (isInline(block)) {
         block = block.parentNode!;
@@ -24,7 +24,7 @@ const isLineBreak = (br: Element, isLBIfEmptyBlock: boolean): boolean => {
         notWSTextNode,
     );
     walker.currentNode = br;
-    return !!walker.nextNode() || (isLBIfEmptyBlock && !walker.previousNode());
+    return !!walker.nextNode();
 };
 
 // --- Workaround for browsers that can't focus empty text nodes

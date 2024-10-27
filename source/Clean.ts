@@ -319,7 +319,7 @@ const cleanupBRs = (
     const brs: NodeListOf<HTMLBRElement> = node.querySelectorAll('BR:last-child');
     let l = brs.length;
     while (l--) {
-        const br = brs[l];
+        const br = brs[l], parent = br.parentElement;
         // TODO: if there are more BR at the end of a block, it creates empty lines
         // Example: <br></div> does nothing, <br><br></div> does create empty line
 //        const prev = br.previousSibling; // br.previousElementSibling;
@@ -327,7 +327,8 @@ const cleanupBRs = (
         // If it doesn't break a line, just remove it; it's not doing
         // anything useful. We'll add it back later if required by the
         // browser.
-        if (!isLineBreak(br)) {
+//        if (!isLineBreak(br)) {
+        if (!br.nextSibling && 1 === parent.children.length && parent.textContent.trim().length) {
             br.remove();
         }
     }

@@ -7,7 +7,7 @@ import {
     mergeContainers,
 } from '../node/MergeSplit';
 import { detach, getClosest, getLength } from '../node/Node';
-import { TreeIterator, SHOW_ELEMENT_OR_TEXT } from '../node/TreeIterator';
+import { SHOW_ELEMENT_OR_TEXT } from '../node/TreeIterator';
 import { createTreeWalker } from '../node/TreeWalker';
 import { isInline, isContainer, isLeaf } from '../node/Category';
 import { getNextBlock, isEmptyBlock, getPreviousBlock } from '../node/Block';
@@ -160,7 +160,6 @@ const extractContentsOfRange = (
  * Returns the next/prev node that's part of the same inline content.
  */
 const getAdjacentInlineNode = (
-//    iterator: TreeIterator<Node>,
     iterator: TreeWalker<Node>,
     method: 'nextNode' | 'previousPONode',
     node: Node,
@@ -228,7 +227,6 @@ const deleteContentsOfRange = (
     // to swallow it due to HTML whitespace rules:
     const startContainer = range.startContainer;
     const startOffset = range.startOffset;
-//    const iterator = new TreeIterator(root, SHOW_ELEMENT_OR_TEXT);
     const iterator = createTreeWalker(root, SHOW_ELEMENT_OR_TEXT);
 
     // Find the character after cursor point

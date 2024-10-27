@@ -8,7 +8,7 @@ import {
     getStartBlockOfRange,
     rangeDoesEndAtBlockBoundary,
 } from '../range/Block';
-import { SHOW_TEXT, TreeIterator } from '../node/TreeIterator';
+import { SHOW_TEXT } from '../node/TreeIterator';
 import { createTreeWalker } from '../node/TreeWalker';
 import { ZWS } from '../Constants';
 
@@ -35,7 +35,6 @@ const Space = (self: Squire, event: KeyboardEvent, range: Range): void => {
                 self.insertPlainText(' ', false);
                 self._docWasChanged();
                 self.saveUndoState(range);
-//                const walker = new TreeIterator<Text>(block, SHOW_TEXT);
                 const walker = createTreeWalker<Text>(block, SHOW_TEXT);
                 let textNode: Text | null;
                 while ((textNode = walker.nextNode())) {

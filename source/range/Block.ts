@@ -3,7 +3,7 @@ import { getPreviousBlock, getNextBlock } from '../node/Block';
 import { getNodeBeforeOffset, getNodeAfterOffset } from '../node/Node';
 import { ZWS, notWS } from '../Constants';
 import { isNodeContainedInRange } from './Boundaries';
-import { TreeIterator, SHOW_ELEMENT_OR_TEXT } from '../node/TreeIterator';
+import { SHOW_ELEMENT_OR_TEXT } from '../node/TreeIterator';
 import { createTreeWalker } from '../node/TreeWalker';
 
 // ---
@@ -109,7 +109,6 @@ const rangeDoesStartAtBlockBoundary = (
     if (!block) {
         return false;
     }
-//    const contentWalker = new TreeIterator<Element | Text>(
     const contentWalker = createTreeWalker<Element | Text>(
         block,
         SHOW_ELEMENT_OR_TEXT,
@@ -145,7 +144,6 @@ const rangeDoesEndAtBlockBoundary = (range: Range, root: Element): boolean => {
     if (!block) {
         return false;
     }
-//    const contentWalker = new TreeIterator<Element | Text>(
     const contentWalker = createTreeWalker<Element | Text>(
         block,
         SHOW_ELEMENT_OR_TEXT,

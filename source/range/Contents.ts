@@ -1,4 +1,4 @@
-import { SHOW_ELEMENT_OR_TEXT, TreeIterator } from '../node/TreeIterator';
+import { SHOW_ELEMENT_OR_TEXT } from '../node/TreeIterator';
 import { FILTER_ACCEPT, createTreeWalker } from '../node/TreeWalker';
 import { isNodeContainedInRange } from './Boundaries';
 import { isInline } from '../node/Category';
@@ -11,7 +11,6 @@ const getTextContentsOfRange = (range: Range) => {
     }
     const startContainer = range.startContainer;
     const endContainer = range.endContainer;
-//    const walker = new TreeIterator<Element | Text>(
     const walker = createTreeWalker<Element | Text>(
         range.commonAncestorContainer,
         SHOW_ELEMENT_OR_TEXT,

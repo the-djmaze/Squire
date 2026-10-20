@@ -60,7 +60,7 @@ import {
 import { keyHandlers, _onKey } from './keyboard/KeyHandlers';
 import { linkifyText } from './keyboard/KeyHelpers';
 import { getTextContentsOfRange } from './range/Contents';
-import { ImageResizer } from './ImageResize';
+//import { ImageResizer } from './ImageResize';
 
 declare const DOMPurify: any;
 
@@ -120,7 +120,7 @@ class Squire {
     _dragRange: Range | null;
 
     _mutation: MutationObserver;
-    _imageResizer: ImageResizer;
+//    _imageResizer: ImageResizer;
 
     constructor(root: HTMLElement, config?: Partial<SquireConfig>) {
         this._root = root;
@@ -203,7 +203,7 @@ class Squire {
         );
 
         // Initialize image resizer
-        this._imageResizer = new ImageResizer(root, this);
+//        this._imageResizer = new ImageResizer(root, this);
 
         this.setHTML('');
     }
@@ -216,7 +216,7 @@ class Squire {
         this._mutation.disconnect();
 
         // Cleanup image resizer
-        this._imageResizer.destroy();
+//        this._imageResizer.destroy();
 
         this._undoIndex = -1;
         this._undoStack = [];

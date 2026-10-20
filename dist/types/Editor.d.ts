@@ -1,3 +1,4 @@
+import { ImageResizer } from './ImageResize';
 type EventHandler = {
     handleEvent: (e: Event) => void;
 } | ((e: Event) => void);
@@ -36,6 +37,7 @@ declare class Squire {
     _mayHaveZWS: boolean;
     _lastAnchorNode: Node | null;
     _lastFocusNode: Node | null;
+    _lastPathRange: Range | null;
     _path: string;
     _events: Map<string, Array<EventHandler>>;
     _undoIndex: number;
@@ -45,12 +47,14 @@ declare class Squire {
     _ignoreChange: boolean;
     _ignoreAllChanges: boolean;
     _isShiftDown: boolean;
-    _keyHandlers: Record<string, KeyHandlerFunction>;
+    _keyHandlers: Record<string, KeyHandlerFunction | null>;
+    _dragRange: Range | null;
     _mutation: MutationObserver;
+    _imageResizer: ImageResizer;
     constructor(root: HTMLElement, config?: Partial<SquireConfig>);
     destroy(): void;
     _makeConfig(userConfig?: object): SquireConfig;
-    setKeyHandler(key: string, fn: KeyHandlerFunction): this;
+    setKeyHandler(key: string, fn: KeyHandlerFunction | null): this;
     _beforeInput(event: InputEvent): void;
     handleEvent(event: Event): void;
     fireEvent(type: string, detail?: Event | object): Squire;

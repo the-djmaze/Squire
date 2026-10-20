@@ -53,12 +53,15 @@ import {
     _monitorShiftKey,
     _onCopy,
     _onCut,
+    _onDragEnd,
+    _onDragStart,
     _onDrop,
     _onPaste,
 } from './Clipboard';
 import { keyHandlers, _onKey } from './keyboard/KeyHandlers';
 import { linkifyText } from './keyboard/KeyHelpers';
 import { getTextContentsOfRange } from './range/Contents';
+import { ImageResizer } from './ImageResize';
 
 declare const DOMPurify: any;
 
@@ -106,6 +109,7 @@ class Squire {
 
     _lastAnchorNode: Node | null;
     _lastFocusNode: Node | null;
+    _lastPathRange: Range | null;
     _path: string;
 
     _events: Map<string, Array<EventHandler>>;
@@ -118,9 +122,12 @@ class Squire {
     _ignoreAllChanges: boolean;
 
     _isShiftDown: boolean;
-    _keyHandlers: Record<string, KeyHandlerFunction>;
+    _keyHandlers: Record<string, KeyHandlerFunction | null>;
+
+    _dragRange: Range | null;
 
     _mutation: MutationObserver;
+    _imageResizer: ImageResizer;
 
     constructor(root: HTMLElement, config?: Partial<SquireConfig>) {
         this._root = root;
@@ -134,6 +141,7 @@ class Squire {
 
         this._lastAnchorNode = null;
         this._lastFocusNode = null;
+        this._lastPathRange = null;
         this._path = '';
 
         this._events = new Map();
@@ -164,6 +172,13 @@ class Squire {
         this.addEventListener('cut', _onCut as (e: Event) => void);
         this.addEventListener('copy', _onCopy as (e: Event) => void);
         this.addEventListener('paste', _onPaste as (e: Event) => void);
+
+        // Drag and drop. Track the selection at the start of a drag so we can
+        // perform an explicit move on drop (deleting the source ourselves)
+        // rather than relying on the browser's default move handling.
+        this._dragRange = null;
+        this.addEventListener('dragstart', _onDragStart as (e: Event) => void);
+        this.addEventListener('dragend', _onDragEnd as (e: Event) => void);
         this.addEventListener('drop', _onDrop as (e: Event) => void);
         this.addEventListener(
             'keydown',
@@ -194,6 +209,9 @@ class Squire {
             this._beforeInput as (e: Event) => void,
         );
 
+        // Initialize image resizer
+        this._imageResizer = new ImageResizer(root, this);
+
         this.setHTML('');
     }
 
@@ -203,6 +221,9 @@ class Squire {
         });
 
         this._mutation.disconnect();
+
+        // Cleanup image resizer
+        this._imageResizer.destroy();
 
         this._undoIndex = -1;
         this._undoStack = [];
@@ -252,7 +273,7 @@ class Squire {
         return config;
     }
 
-    setKeyHandler(key: string, fn: KeyHandlerFunction) {
+    setKeyHandler(key: string, fn: KeyHandlerFunction | null) {
         this._keyHandlers[key] = fn;
         return this;
     }
@@ -287,7 +308,7 @@ class Squire {
                 event.preventDefault();
                 this.bold();
                 break;
-            case 'formaItalic':
+            case 'formatItalic':
                 event.preventDefault();
                 this.italic();
                 break;
@@ -532,10 +553,28 @@ class Squire {
 
     _getRangeAndRemoveBookmark(range?: Range): Range | null {
         const root = this._root;
-        const start = root.querySelector('#' + this.startSelectionId);
-        const end = root.querySelector('#' + this.endSelectionId);
+        // Use querySelectorAll so we can remove any stale duplicates left
+        // over from earlier sessions (e.g. via setHTML, pasted HTML, or an
+        // undo-state snapshot whose HTML still contained bookmark markers).
+        // If a stale marker were left behind, the next querySelector call
+        // would return it instead of the freshly inserted one.
+        const starts = root.querySelectorAll('#' + this.startSelectionId);
+        const ends = root.querySelectorAll('#' + this.endSelectionId);
+        const start = starts[0];
+        const end = ends[0];
 
-        if (start && end) {
+        // Only restore the range when both markers exist and start precedes
+        // end in document order. Without this check, stale duplicates can
+        // make end appear before start in the same container, which makes
+        // `endOffset -= 1` go negative and throw IndexSizeError on setEnd.
+        if (
+            start &&
+            end &&
+            !!(
+                start.compareDocumentPosition(end) &
+                Node.DOCUMENT_POSITION_FOLLOWING
+            )
+        ) {
             let startContainer: Node = start.parentNode!;
             let endContainer: Node = end.parentNode!;
             const startOffset = Array.from(startContainer.childNodes).indexOf(
@@ -579,6 +618,18 @@ class Squire {
                 }
             }
         }
+
+        // Remove any remaining bookmark elements: stale duplicates, plus the
+        // primary pair if we bailed out above. Element#remove() is a no-op
+        // on already-detached nodes, so re-running it on the pair we just
+        // removed is safe.
+        for (let i = 0; i < starts.length; i += 1) {
+            starts[i].remove();
+        }
+        for (let i = 0; i < ends.length; i += 1) {
+            ends[i].remove();
+        }
+
         return range || null;
     }
 
@@ -689,11 +740,33 @@ class Squire {
 
     _updatePathOnEvent(): void {
         if (this._isFocused) {
-            this._updatePath(this.getSelection());
+            const lastPathRange = this._lastPathRange;
+            const selection = this.getSelection();
+            // Check the selection is actually different from the one we last
+            // processed; Firefox as of v154 seems to have started firing
+            // selectionchange events sometimes on scroll, causing massive
+            // performance degredation as it gets stuck in a loop with
+            // scrollIntoView! We can't compare against _lastSelection as
+            // setSelection updates that before the selectionchange event fires.
+            if (
+                !lastPathRange ||
+                !lastPathRange.commonAncestorContainer.isConnected ||
+                selection.compareBoundaryPoints(
+                    0, // Range.START_TO_START,
+                    lastPathRange,
+                ) !== 0 ||
+                selection.compareBoundaryPoints(
+                    2, //Range.END_TO_END
+                    lastPathRange,
+                ) !== 0
+            ) {
+                this._updatePath(selection);
+            }
         }
     }
 
     _updatePath(range: Range, force?: boolean): void {
+        this._lastPathRange = range.cloneRange();
         const anchor = range.startContainer;
         const focus = range.endContainer;
         let newPath: string;
@@ -874,12 +947,16 @@ class Squire {
     }
 
     saveUndoState(range?: Range): Squire {
+        let rangeIsFromSelection = false;
         if (!range) {
             range = this.getSelection();
+            rangeIsFromSelection = true;
         }
         this._recordUndoState(range, this._isInUndoState);
         this._getRangeAndRemoveBookmark(range);
-
+        if (rangeIsFromSelection) {
+            this.setSelection(range);
+        }
         return this;
     }
 
@@ -961,14 +1038,28 @@ class Squire {
 
     getHTML(withBookmark?: boolean): string {
         let range: Range | undefined;
-        if (withBookmark) {
-            range = this.getSelection();
-            this._saveRangeToBookmark(range);
-        }
-        const html = this._getRawHTML().replace(/\u200B/g, '');
-        if (withBookmark) {
-            this._getRangeAndRemoveBookmark(range);
-        }
+        let html = '';
+        // Avoid triggering an "input" event from the DOM modifications when
+        // we get the HTML
+        this.modifyDocument(() => {
+            if (withBookmark) {
+                range = this.getSelection();
+                this._saveRangeToBookmark(range);
+            }
+            const resizeContainer = this._root.querySelector(
+                '.squire-image-resize-container',
+            );
+            if (resizeContainer) {
+                resizeContainer.remove();
+            }
+            html = this._getRawHTML().replace(/\u200B/g, '');
+            if (resizeContainer) {
+                this._root.appendChild(resizeContainer);
+            }
+            if (withBookmark) {
+                this._getRangeAndRemoveBookmark(range);
+            }
+        });
         return html;
     }
 
@@ -1174,20 +1265,6 @@ class Squire {
             range.collapsed &&
             getNearest(range.startContainer, this._root, 'PRE')
         ) {
-            const startContainer: Node = range.startContainer;
-            let offset = range.startOffset;
-            let textNode: Text;
-            if (!startContainer || !(startContainer instanceof Text)) {
-                const text = document.createTextNode('');
-                startContainer.insertBefore(
-                    text,
-                    startContainer.childNodes[offset],
-                );
-                textNode = text;
-                offset = 0;
-            } else {
-                textNode = startContainer;
-            }
             let doInsert = true;
             if (isPaste) {
                 const event = new CustomEvent('willPaste', {
@@ -1202,6 +1279,29 @@ class Squire {
             }
 
             if (doInsert) {
+                this.saveUndoState(range);
+                const startContainer: Node = range.startContainer;
+                let offset = range.startOffset;
+                let textNode: Text;
+                if (startContainer instanceof Text) {
+                    textNode = startContainer;
+                } else {
+                    let nodeBeforeCursor = offset
+                        ? startContainer.childNodes[offset - 1]
+                        : null;
+                    if (nodeBeforeCursor instanceof Text) {
+                        textNode = nodeBeforeCursor;
+                        offset = textNode.length;
+                    } else {
+                        const text = document.createTextNode('');
+                        startContainer.insertBefore(
+                            text,
+                            startContainer.childNodes[offset],
+                        );
+                        textNode = text;
+                        offset = 0;
+                    }
+                }
                 textNode.insertData(offset, plainText);
                 range.setStart(textNode, offset + plainText.length);
                 range.collapse(true);
@@ -1920,12 +2020,11 @@ class Squire {
 
     _ensureBottomLine(): void {
         const root = this._root;
-        const last = root.lastElementChild;
-        if (
-            !last ||
-            last.nodeName !== this._config.blockTag ||
-            !isBlock(last)
-        ) {
+        let last: Element | null = root;
+        do {
+            last = last.lastElementChild;
+        } while (last && isContainer(last));
+        if (!last || !isBlock(last)) {
             root.appendChild(this.createDefaultBlock());
         }
     }
@@ -1982,10 +2081,11 @@ class Squire {
         if (block && (parent = getNearest(block, root, 'PRE'))) {
             moveRangeBoundariesDownTree(range);
             node = range.startContainer;
-            const offset = range.startOffset;
+            let offset = range.startOffset;
             if (!(node instanceof Text)) {
                 node = document.createTextNode('');
                 parent.insertBefore(node, parent.firstChild);
+                offset = 0;
             }
             // If blank line: split and insert default block
             if (
@@ -2015,7 +2115,9 @@ class Squire {
                 range.setStart(node, 0);
             } else {
                 (node as Text).insertData(offset, '\n');
-                fixCursor(parent);
+                if (!node.nextSibling) {
+                    parent.appendChild(createElement('BR'));
+                }
                 // Firefox bug: if you set the selection in the text node after
                 // the new line, it draws the cursor before the line break still
                 // but if you set the selection to the equivalent position

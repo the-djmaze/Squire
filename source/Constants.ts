@@ -1,6 +1,7 @@
 const DOCUMENT_POSITION_PRECEDING = 2; // Node.DOCUMENT_POSITION_PRECEDING
 const ELEMENT_NODE = 1; // Node.ELEMENT_NODE;
 const TEXT_NODE = 3; // Node.TEXT_NODE;
+const COMMENT_NODE = 8; // Node.COMMENT_NODE
 const DOCUMENT_NODE = 9; // Node.DOCUMENT_NODE;
 const DOCUMENT_FRAGMENT_NODE = 11; // Node.DOCUMENT_FRAGMENT_NODE;
 
@@ -26,7 +27,9 @@ const supportsInputEvents =
     'onbeforeinput' in document && 'inputType' in new InputEvent('input');
 
 // Use [^ \t\r\n] instead of \S so that nbsp does not count as white-space
-const notWS = /[^ \t\r\n]/;
+// Include ZWS - \u200B - because we use that as a placeholder for focusing
+// text nodes, but will strip it out after.
+const notWS = /[^ \t\r\n\u200B]/;
 
 // ---
 
@@ -34,6 +37,7 @@ export {
     DOCUMENT_POSITION_PRECEDING,
     ELEMENT_NODE,
     TEXT_NODE,
+    COMMENT_NODE,
     DOCUMENT_NODE,
     DOCUMENT_FRAGMENT_NODE,
     notWS,

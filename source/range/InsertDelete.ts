@@ -406,7 +406,7 @@ const insertTreeFragmentIntoRange = (
                 range.collapse(false);
             }
             stopPoint =
-                getNearest(range.endContainer, root, 'BLOCKQUOTE') || root;
+                getClosest(range.endContainer, root, 'BLOCKQUOTE') || root;
         }
         moveRangeBoundariesUpTree(range, stopPoint, stopPoint, root);
         // Now split after block up to blockquote (if a parent) or root

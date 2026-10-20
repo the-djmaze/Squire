@@ -13,7 +13,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/neilj/Squire.git"
+        "url": "https://github.com/fastmail/Squire.git"
     },
     "keywords": [
         "wysiwyg",
@@ -25,9 +25,9 @@
     "author": "Neil Jenkins",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/neilj/Squire/issues"
+        "url": "https://github.com/fastmail/Squire/issues"
     },
-    "homepage": "https://github.com/neilj/Squire",
+    "homepage": "https://github.com/fastmail/Squire",
     "devDependencies": {
         "@babel/core": "^7.24.9",
         "@babel/preset-env": "^7.24.8",

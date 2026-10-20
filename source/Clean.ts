@@ -42,7 +42,7 @@ const styleToSemantic: Record<
         ): HTMLElement {
             return createElement('SPAN', {
                 class: classNames.fontFamily,
-                style: 'font-family:' + family,
+                style: { fontFamily: family },
             });
         },
     },
@@ -51,7 +51,7 @@ const styleToSemantic: Record<
         replace(classNames: { fontSize: string }, size: string): HTMLElement {
             return createElement('SPAN', {
                 class: classNames.fontSize,
-                style: 'font-size:' + size,
+                style: { fontSize: size },
             });
         },
     },

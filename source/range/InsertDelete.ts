@@ -319,7 +319,7 @@ const insertTreeFragmentIntoRange = (
     range.collapse(false); // collapse to end
 
     // Where will we split up to? First blockquote parent, otherwise root.
-    const stopPoint =
+    let stopPoint =
         getClosest(range.endContainer, root, 'BLOCKQUOTE') || root;
 
     // Merge the contents of the first block in the frag with the focused block.

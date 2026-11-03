@@ -2687,9 +2687,9 @@ class Squire {
     }
 
     setConfig(config) {
-        this._config = mergeObjects({
+        this._config = Object.assign({
             addLinks: true
-        }, config, true);
+        }, config);
         return this;
     }
 }

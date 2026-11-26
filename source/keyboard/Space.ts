@@ -32,8 +32,6 @@ const Space = (self: Squire, event: KeyboardEvent, range: Range): void => {
             const text = block.textContent?.trimEnd().replace(ZWS, '');
             if (text === '*' || text === '1.') {
                 event.preventDefault();
-                self.insertPlainText(' ', false);
-                self._docWasChanged();
                 self.saveUndoState(range);
                 const walker = createTreeWalker<Text>(block, SHOW_TEXT);
                 let textNode: Text | null;

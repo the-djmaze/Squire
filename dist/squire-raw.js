@@ -333,11 +333,12 @@
       return nodeStartAfterStart && nodeEndBeforeEnd;
     }
   };
+  var canDescendInto = (node) => node instanceof Text || node.nodeType === ELEMENT_NODE && !isLeaf(node);
   var moveRangeBoundariesDownTree = (range) => {
     let { startContainer, startOffset, endContainer, endOffset } = range;
     while (!(startContainer instanceof Text)) {
       let child = startContainer.childNodes[startOffset];
-      if (!child || isLeaf(child)) {
+      if (!child || !canDescendInto(child)) {
         if (startOffset) {
           child = startContainer.childNodes[startOffset - 1];
           if (child instanceof Text) {
@@ -359,7 +360,7 @@
     if (endOffset) {
       while (!(endContainer instanceof Text)) {
         const child = endContainer.childNodes[endOffset - 1];
-        if (!child || isLeaf(child)) {
+        if (!child || !canDescendInto(child)) {
           if (child && child.nodeName === "BR" && !isLineBreak(child, false)) {
             endOffset -= 1;
             continue;
@@ -372,7 +373,7 @@
     } else {
       while (!(endContainer instanceof Text)) {
         const child = endContainer.firstChild;
-        if (!child || isLeaf(child)) {
+        if (!child || !canDescendInto(child)) {
           break;
         }
         endContainer = child;
@@ -816,9 +817,38 @@
       return el;
     }
   };
-  var allowedBlock = /^(?:A(?:DDRESS|RTICLE|SIDE|UDIO)|BLOCKQUOTE|CAPTION|D(?:[DLT]|IV)|F(?:IGURE|IGCAPTION|OOTER)|H[1-6]|HEADER|L(?:ABEL|EGEND|I)|O(?:L|UTPUT)|P(?:RE)?|SECTION|T(?:ABLE|BODY|D|FOOT|H|HEAD|R)|COL(?:GROUP)?|UL)$/;
-  var blacklist = /^(?:HEAD|META|STYLE)/;
-  var cleanTree = (node, config, preserveWS) => {
+  var allowedBlock = /^(?:A(?:DDRESS|RTICLE|SIDE|UDIO)?|BLOCKQUOTE|CAPTION|D(?:[DLT]|IV)|F(?:IGURE|IGCAPTION|OOTER)|H[1-6]|HEADER|L(?:ABEL|EGEND|I)|O(?:L|UTPUT)|P(?:RE)?|SECTION|T(?:ABLE|BODY|D|FOOT|H|HEAD|R)|COL(?:GROUP)?|UL)$/;
+  var blacklist = /^(?:HEAD|META|STYLE)$/;
+  var hasInlineContent = (walker, start, forwards, cache2) => {
+    const visited = [];
+    let result = false;
+    let cacheable = true;
+    let node;
+    walker.currentNode = start;
+    while (node = forwards ? walker.nextNode() : walker.previousPONode()) {
+      const cached = cache2.get(node);
+      if (cached !== void 0) {
+        result = cached;
+        break;
+      }
+      if (node.nodeName === "IMG" || node instanceof Text && notWS.test(node.data)) {
+        result = true;
+        break;
+      }
+      if (!isInline(node)) {
+        cacheable = !forwards || allowedBlock.test(node.nodeName) && !stylesRewriters[node.nodeName];
+        break;
+      }
+      visited.push(node);
+    }
+    if (cacheable) {
+      for (const visitedNode of visited) {
+        cache2.set(visitedNode, result);
+      }
+    }
+    return result;
+  };
+  var cleanTree = (node, config, preserveWS, wsCache = { before: /* @__PURE__ */ new WeakMap(), after: /* @__PURE__ */ new WeakMap() }) => {
     const children = node.childNodes;
     let nonInlineParent = node;
     while (isInline(nonInlineParent)) {
@@ -848,7 +878,12 @@
           continue;
         }
         if (childLength) {
-          cleanTree(child, config, preserveWS || nodeName === "PRE");
+          cleanTree(
+            child,
+            config,
+            preserveWS || nodeName === "PRE",
+            wsCache
+          );
         }
       } else {
         if (child instanceof Text) {
@@ -859,32 +894,16 @@
             continue;
           }
           if (startsWithWS) {
-            walker.currentNode = child;
-            let sibling;
-            while (sibling = walker.previousPONode()) {
-              if (sibling.nodeName === "IMG" || sibling instanceof Text && notWS.test(sibling.data)) {
-                break;
-              }
-              if (!isInline(sibling)) {
-                sibling = null;
-                break;
-              }
-            }
-            data = data.replace(/^[ \t\r\n]+/g, sibling ? " " : "");
+            data = data.replace(
+              /^[ \t\r\n]+/g,
+              hasInlineContent(walker, child, false, wsCache.before) ? " " : ""
+            );
           }
-          if (endsWithWS) {
-            walker.currentNode = child;
-            let sibling;
-            while (sibling = walker.nextNode()) {
-              if (sibling.nodeName === "IMG" || sibling instanceof Text && notWS.test(sibling.data)) {
-                break;
-              }
-              if (!isInline(sibling)) {
-                sibling = null;
-                break;
-              }
-            }
-            data = data.replace(/[ \t\r\n]+$/g, sibling ? " " : "");
+          if (endsWithWS && data) {
+            data = data.replace(
+              /[ \t\r\n]+$/g,
+              hasInlineContent(walker, child, true, wsCache.after) ? " " : ""
+            );
           }
           if (data) {
             child.data = data;
@@ -1409,7 +1428,7 @@
     } else {
       contents = range.cloneContents();
     }
-    if (parent instanceof Text) {
+    while (parent && !(parent instanceof Element)) {
       parent = parent.parentNode;
     }
     while (parent && parent !== copyRoot) {
@@ -2543,13 +2562,15 @@
                   'www\\d{0,3}[.]' +
                   // or
                   '|' +
-                  // foo90.com/
-                  '[a-z0-9][a-z0-9.\\-]*[.][a-z]{2,}\\/' +
+                  // foo90.com/ (bounded by the 253-character limit on
+                  // domain names, so a long dotted run can't make every
+                  // boundary in it rescan the rest)
+                  '[a-z0-9][a-z0-9.\\-]{0,252}[.][a-z]{2,}\\/' +
               ')' +
               // Then we get one or more:
               '(?:' +
-                  // Run of non-spaces, non ()<>
-                  '[^\\s()<>]+' +
+                  // Non-space, non ()<>
+                  '[^\\s()<>]' +
                   // or
                   '|' +
                   // balanced parentheses (one level deep only)
@@ -2566,8 +2587,9 @@
               ')' +
           // Capture group 2: Emails
           ')|(' +
-              // Add links to emails
-              '[\\w\\-.%+]+@(?:[\\w\\-]+\\.)+[a-z]{2,}\\b' +
+              // Add links to emails (local part bounded by the 64-character
+              // limit, for the same reason as the domain above)
+              '[\\w\\-.%+]{1,64}@(?:[\\w\\-]+\\.)+[a-z]{2,}\\b' +
               // Allow query parameters in the mailto: style
               '(?:' +
                   '[?][^&?\\s]+=[^\\s?&`!()\\[\\]{};:\'".,<>«»“”‘’]+' +
@@ -2577,7 +2599,7 @@
           'i'
       );
       */
-      this.linkRegExp = /\b(?:((?:(?:ht|f)tps?:\/\/|www\d{0,3}[.]|[a-z0-9][a-z0-9.\-]*[.][a-z]{2,}\/)(?:[^\s()<>]+|\([^\s()<>]+\))+(?:[^\s?&`!()\[\]{};:'".,<>«»“”‘’]|\([^\s()<>]+\)))|([\w\-.%+]+@(?:[\w\-]+\.)+[a-z]{2,}\b(?:[?][^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+(?:&[^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+)*)?))/i;
+      this.linkRegExp = /\b(?:((?:(?:ht|f)tps?:\/\/|www\d{0,3}[.]|[a-z0-9][a-z0-9.\-]{0,252}[.][a-z]{2,}\/)(?:[^\s()<>]|\([^\s()<>]+\))+(?:[^\s?&`!()\[\]{};:'".,<>«»“”‘’]|\([^\s()<>]+\)))|([\w\-.%+]{1,64}@(?:[\w\-]+\.)+[a-z]{2,}\b(?:[?][^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+(?:&[^&?\s]+=[^\s?&`!()\[\]{};:'".,<>«»“”‘’]+)*)?))/i;
       this.tagAfterSplit = {
         DT: "DD",
         DD: "DT",
@@ -3958,8 +3980,11 @@
     // --- Block formatting
     _ensureBottomLine() {
       const root = this._root;
-      const last = root.lastElementChild;
-      if (!last || last.nodeName !== this._config.blockTag || !isBlock(last)) {
+      let last = root;
+      do {
+        last = last.lastElementChild;
+      } while (last && isContainer(last));
+      if (!last || !isBlock(last)) {
         root.appendChild(this.createDefaultBlock());
       }
     }
